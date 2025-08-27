@@ -77,6 +77,7 @@ warn_unused_ignores = true
 warn_no_return = true
 warn_unreachable = true
 strict_equality = true
+explicit_package_bases = true
 
 [[tool.mypy.overrides]]
 module = [
@@ -85,6 +86,10 @@ module = [
     "google.*",
 ]
 ignore_missing_imports = true
+
+[tool.flake8]
+max-line-length = 88
+extend-ignore = ["E203", "W503"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

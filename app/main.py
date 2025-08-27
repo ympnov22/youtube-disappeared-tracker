@@ -1,3 +1,5 @@
+from typing import Dict
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -17,14 +19,14 @@ app.add_middleware(
 
 
 @app.get("/")
-async def root():
+async def root() -> Dict[str, str]:
     return {"message": "YouTube Disappeared Video Tracker API"}
 
 
 @app.get("/health")
-async def health_check():
+async def health_check() -> Dict[str, str]:
     return {
         "status": "healthy",
         "version": "0.1.0",
-        "service": "youtube-tracker"
+        "service": "youtube-tracker",
     }
