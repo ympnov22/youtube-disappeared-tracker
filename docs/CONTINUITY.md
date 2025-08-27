@@ -29,8 +29,6 @@
 
 **Required Environment Variables** (for future phases):
 ```bash
-YOUTUBE_CLIENT_ID=<oauth_client_id>
-YOUTUBE_CLIENT_SECRET=<oauth_client_secret>
 YOUTUBE_API_KEY=<youtube_api_key>
 DATABASE_URL=<postgresql_connection_string>
 REDIS_URL=<redis_connection_string>
@@ -69,9 +67,9 @@ SENTRY_DSN=<monitoring_dsn>
 **No Technical Issues**: All code and documentation are complete and ready
 
 ## Next Phase Preview
-**Phase 1**: Authentication & YouTube API Integration
+**Phase 1**: Channel Management & Resolver
 - **Duration**: 3-4 hours
-- **Key Tasks**: YouTube OAuth, API client, rate limiting, environment config
+- **Key Tasks**: Channel registration system, API key authentication, channel management UI, 10-channel limit enforcement
 - **Prerequisites**: GitHub repository created, Phase 0 PR approved
 
 ## Session Handoff Notes
