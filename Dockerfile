@@ -20,12 +20,19 @@ ENV POETRY_NO_INTERACTION=1 \
 # Copy Poetry files
 COPY pyproject.toml poetry.lock* ./
 
-# Install dependencies
-RUN poetry install --only=main && rm -rf $POETRY_CACHE_DIR
+# Satisfy Poetry's [tool.poetry] readme metadata early
+COPY README.md LICENSE* ./
+
+# Install only dependencies first for better cache reuse
+RUN poetry config virtualenvs.create false \
+    && poetry install --no-interaction --no-ansi --no-root && rm -rf $POETRY_CACHE_DIR
 
 # Copy application code
 COPY app/ ./app/
 COPY alembic.ini ./
+
+# Now install local package (our app)
+RUN poetry install --no-interaction --no-ansi
 
 # Create non-root user
 RUN useradd --create-home --shell /bin/bash app && chown -R app:app /app
