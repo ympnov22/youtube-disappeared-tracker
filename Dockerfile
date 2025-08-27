@@ -25,7 +25,6 @@ RUN poetry install --only=main && rm -rf $POETRY_CACHE_DIR
 
 # Copy application code
 COPY app/ ./app/
-COPY alembic/ ./alembic/
 COPY alembic.ini ./
 
 # Create non-root user
