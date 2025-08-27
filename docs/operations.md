@@ -23,8 +23,6 @@ DATABASE_URL=postgresql://user:password@host:port/database
 REDIS_URL=redis://user:password@host:port/database
 
 # YouTube API Configuration
-YOUTUBE_CLIENT_ID=your-youtube-client-id
-YOUTUBE_CLIENT_SECRET=your-youtube-client-secret
 YOUTUBE_API_KEY=your-youtube-api-key
 
 # Session Configuration
@@ -144,8 +142,6 @@ fly redis create --name youtube-tracker-redis --region nrt
 #### Environment Variables
 ```bash
 # Set environment variables
-fly secrets set YOUTUBE_CLIENT_ID=your-client-id
-fly secrets set YOUTUBE_CLIENT_SECRET=your-client-secret
 fly secrets set YOUTUBE_API_KEY=your-api-key
 fly secrets set APP_SECRET_KEY=your-secret-key
 fly secrets set SESSION_SECRET=your-session-secret
@@ -353,7 +349,7 @@ SELECT count(*) FROM pg_stat_activity;
 
 ### API Security
 - Use HTTPS for all communications
-- Implement proper OAuth token handling
+- Secure API key management for YouTube Data API access
 - Rate limiting on all endpoints
 - Input validation and sanitization
 - CORS configuration for web interface

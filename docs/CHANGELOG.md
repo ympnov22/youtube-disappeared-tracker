@@ -26,9 +26,17 @@
 2. **Development Approach**: 8-phase incremental development with user approval gates
 3. **Documentation Strategy**: English docs with bilingual PR/reports (English + Japanese)
 4. **Deployment Target**: Fly.io (Tokyo region) for production
-5. **API Strategy**: YouTube Data API v3 with OAuth youtube.readonly scope
+5. **API Strategy**: YouTube Data API v3 with API key for public data access
 6. **Data Storage**: Metadata only, no video downloads
 7. **Architecture**: Microservices-ready structure with clear separation of concerns
+
+### Specification Change (2025-08-27)
+- ✅ Updated from OAuth-based YouTube subscriptions to user-managed channel registration
+- ✅ Changed to API key authentication for public data access
+- ✅ Updated Phase 1 focus to "Channel Management & Resolver"
+- ✅ Added 10-channel limit with duplicate prevention
+- ✅ Updated data model with new channel fields (source_input, is_active, added_at)
+- ✅ Updated API endpoints for channel management
 
 ### Remaining Tasks
 - ⏳ Create GitHub repository (user action required)
@@ -55,25 +63,26 @@
 
 ---
 
-## Phase 1: Authentication & YouTube API Integration
+## Phase 1: Channel Management & Resolver
 **Status**: 📋 Planned  
 **Estimated Duration**: 3-4 hours  
 **Prerequisites**: GitHub repository created, Phase 0 approved
 
 ### Planned Tasks
 - [ ] Set up FastAPI application structure
-- [ ] Implement YouTube OAuth 2.0 flow
-- [ ] Create YouTube API client with rate limiting
-- [ ] Set up environment variable configuration
-- [ ] Implement token storage and refresh logic
-- [ ] Create authentication middleware
-- [ ] Add basic error handling and logging
-- [ ] Write unit tests for authentication flow
+- [ ] Implement channel registration and resolution system
+- [ ] Create YouTube API client with API key authentication
+- [ ] Build channel management UI and API endpoints
+- [ ] Enforce 10-channel limit with duplicate prevention
+- [ ] Update database schema with new channel fields
+- [ ] Create channel management settings page
+- [ ] Write unit tests for channel operations
 
 ### Success Criteria
-- User can authenticate with YouTube successfully
-- API client respects rate limits
-- Tokens are securely stored and refreshed
+- Users can register channels via URL, @handle, or channel ID
+- System resolves various input formats to canonical channel IDs
+- 10-channel limit is enforced with duplicate prevention
+- Channel management UI is functional and user-friendly
 - All tests pass
 
 ---

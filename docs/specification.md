@@ -6,8 +6,8 @@
 The YouTube Disappeared Video Tracker is a personal practice project designed to monitor YouTube channels for video changes and detect when videos become unavailable or are removed. The system tracks metadata only (no video downloads) and provides insights into content availability over time.
 
 ### 1.2 Scope
-- **MVP Focus**: Track subscribed channels, detect video changes, provide basic web UI
-- **Authentication**: YouTube Data API v3 with OAuth (youtube.readonly scope)
+- **MVP Focus**: Track user-registered channels (max 10), detect video changes, provide basic web UI
+- **Authentication**: YouTube Data API v3 with API key for public data access
 - **Storage**: Metadata only - video titles, descriptions, thumbnails, upload dates
 - **Detection**: Periodic diffing to identify NEW/CHANGED/MISSING videos
 - **Interface**: Simple web dashboard with channel timeline view and CSV export
@@ -19,10 +19,10 @@ The YouTube Disappeared Video Tracker is a personal practice project designed to
 ### 2.1 Core Features
 
 #### 2.1.1 Channel Management
-- **FR-001**: User can authenticate with YouTube OAuth (youtube.readonly)
-- **FR-002**: System fetches user's subscribed channels list
-- **FR-003**: User can select which channels to monitor
-- **FR-004**: System stores channel metadata (name, ID, description, subscriber count)
+- **FR-001**: User can register up to 10 channels via web UI using channel URL/handle/ID
+- **FR-002**: System resolves various input formats to canonical channel IDs using YouTube Data API v3
+- **FR-003**: System prevents duplicate channel registration and enforces 10-channel limit
+- **FR-004**: System stores channel metadata (name, ID, description, subscriber count, source input)
 
 #### 2.1.2 Video Tracking
 - **FR-005**: System periodically fetches video lists for monitored channels
@@ -66,7 +66,7 @@ The YouTube Disappeared Video Tracker is a personal practice project designed to
 - **NFR-003**: Background job processing for periodic updates
 
 #### 2.2.2 Security
-- **NFR-004**: Secure OAuth token storage and refresh
+- **NFR-004**: Secure API key management for YouTube Data API access
 - **NFR-005**: Environment variable configuration for sensitive data
 - **NFR-006**: No storage of actual video content
 
@@ -78,17 +78,23 @@ The YouTube Disappeared Video Tracker is a personal practice project designed to
 ## 3. Data Models
 
 ### 3.1 Channel Model
-```
-Channel:
-  - id: string (YouTube channel ID)
-  - name: string
-  - description: string
-  - subscriber_count: integer
-  - thumbnail_url: string
-  - created_at: datetime
-  - updated_at: datetime
-  - is_monitored: boolean
-  - last_checked: datetime
+```sql
+CREATE TABLE channels (
+    id VARCHAR(24) PRIMARY KEY,  -- YouTube channel ID (UC...)
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    thumbnail_url VARCHAR(500),
+    subscriber_count INTEGER,
+    video_count INTEGER,
+    uploads_playlist_id VARCHAR(24) NOT NULL,
+    source_input TEXT NOT NULL,  -- Original user input (URL/@handle/ID)
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    added_at TIMESTAMP NOT NULL DEFAULT now(),
+    created_at TIMESTAMP NOT NULL DEFAULT now(),
+    updated_at TIMESTAMP NOT NULL DEFAULT now()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS ux_channels_id ON channels(id);
 ```
 
 ### 3.2 Video Model
@@ -126,12 +132,12 @@ ChangeLog:
 
 #### 4.1.1 YouTube Data API v3
 - **Endpoint**: `https://www.googleapis.com/youtube/v3/`
-- **Authentication**: OAuth 2.0 (youtube.readonly scope)
+- **Authentication**: API Key for public data access
 - **Key Operations**:
-  - `subscriptions.list`: Get user's subscribed channels
-  - `channels.list`: Get channel details
-  - `search.list`: Get channel's videos
+  - `channels.list`: Get channel details and resolve @handles to channel IDs
+  - `playlistItems.list`: Get channel's uploads playlist videos
   - `videos.list`: Verify video existence and get details
+  - `search.list`: Search for channels by name (if needed)
 
 #### 4.1.2 Rate Limiting
 - **Quota**: 10,000 units per day (default)
@@ -143,16 +149,12 @@ ChangeLog:
 
 ### 4.2 Internal API Endpoints
 
-#### 4.2.1 Authentication
-- `GET /auth/youtube` - Initiate YouTube OAuth flow
-- `GET /auth/callback` - Handle OAuth callback
-- `POST /auth/logout` - Clear authentication
-
-#### 4.2.2 Channels
-- `GET /api/channels` - List monitored channels
-- `POST /api/channels/{id}/monitor` - Start monitoring channel
-- `DELETE /api/channels/{id}/monitor` - Stop monitoring channel
-- `GET /api/channels/{id}/videos` - Get channel's videos
+#### 4.2.1 Channel Management
+- `POST /api/channels` - Register a new channel (max 10)
+- `GET /api/channels` - List registered channels
+- `DELETE /api/channels/{channelId}` - Remove a channel from monitoring
+- `POST /api/channels/reorder` - Update channel display order (optional)
+- `GET /api/channels/{channelId}/videos` - Get channel's videos
 
 #### 4.2.3 Videos
 - `GET /api/videos` - List videos with filters
@@ -194,8 +196,7 @@ ChangeLog:
 
 #### 5.2.2 Environment Variables
 ```
-YOUTUBE_CLIENT_ID=<oauth_client_id>
-YOUTUBE_CLIENT_SECRET=<oauth_client_secret>
+YOUTUBE_API_KEY=<youtube_data_api_key>
 DATABASE_URL=<postgresql_connection_string>
 REDIS_URL=<redis_connection_string>
 SLACK_WEBHOOK_URL=<slack_webhook_url> (optional)
@@ -222,10 +223,10 @@ EMAIL_SERVICE_KEY=<email_service_key> (optional)
 - **Status**: Current availability and reason for changes
 
 ### 6.4 Settings Page
-- **Channel Management**: Add/remove monitored channels
+- **Channel Management**: Add/remove/reorder registered channels (max 10)
+- **Channel Registration**: Input form accepting URLs, @handles, or channel IDs
 - **Notification Preferences**: Slack/email configuration
 - **Export Options**: CSV download settings
-- **Account**: OAuth status, re-authentication
 
 ## 7. Implementation Notes
 

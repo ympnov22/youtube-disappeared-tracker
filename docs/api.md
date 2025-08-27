@@ -5,58 +5,54 @@
 This document describes the REST API endpoints for the YouTube Disappeared Video Tracker application.
 
 **Base URL**: `https://your-app.fly.dev/api/v1`  
-**Authentication**: OAuth 2.0 (YouTube)  
+**Authentication**: API Key (YouTube Data API v3)  
 **Content Type**: `application/json`
-
----
-
-## Authentication Endpoints
-
-### Initiate YouTube OAuth
-```http
-GET /auth/youtube
-```
-
-Redirects user to YouTube OAuth consent screen.
-
-**Response**: `302 Redirect` to YouTube OAuth URL
-
----
-
-### OAuth Callback
-```http
-GET /auth/callback?code={auth_code}&state={state}
-```
-
-Handles OAuth callback from YouTube.
-
-**Parameters**:
-- `code` (string): Authorization code from YouTube
-- `state` (string): CSRF protection state parameter
-
-**Response**: `302 Redirect` to dashboard or error page
-
----
-
-### Logout
-```http
-POST /auth/logout
-```
-
-Clears user authentication session.
-
-**Response**: `200 OK`
 
 ---
 
 ## Channel Management
 
-### List Monitored Channels
+### Register Channel
+```http
+POST /api/channels
+Content-Type: application/json
+
+{
+  "input": "<channel_url|@handle|channel_id>"
+}
+```
+
+**Description**: Register a new channel for monitoring (max 10)  
+**Input Examples**:
+- `https://www.youtube.com/channel/UCxxx`
+- `https://www.youtube.com/@handle`
+- `https://www.youtube.com/c/channelname`
+- `@handle`
+- `UCxxx` (raw channel ID)
+
+**Response**: `201 Created`
+```json
+{
+  "channel": {
+    "id": "UCxxxxxx",
+    "title": "Channel Name",
+    "description": "Channel description",
+    "thumbnail_url": "https://...",
+    "subscriber_count": 1000000,
+    "source_input": "@handle",
+    "is_active": true,
+    "added_at": "2025-08-27T10:30:00Z"
+  },
+  "message": "Channel registered successfully"
+}
+```
+
+### List Registered Channels
 ```http
 GET /api/channels
 ```
 
-Returns list of channels being monitored.
+Returns list of user-registered channels.
 
 **Response**:
 ```json
@@ -83,71 +79,45 @@ Returns list of channels being monitored.
 
 ---
 
-### Get User's YouTube Subscriptions
+### Remove Channel
 ```http
-GET /api/channels/subscriptions
+DELETE /api/channels/{channelId}
 ```
 
-Fetches user's YouTube subscriptions for channel selection.
-
-**Response**:
-```json
-{
-  "subscriptions": [
-    {
-      "id": "UCxxxxxx",
-      "name": "Channel Name",
-      "description": "Channel description",
-      "subscriber_count": 1000000,
-      "thumbnail_url": "https://...",
-      "is_monitored": false
-    }
-  ],
-  "total": 50
-}
-```
-
----
-
-### Start Monitoring Channel
-```http
-POST /api/channels/{channel_id}/monitor
-```
-
-Begins monitoring a specific channel.
+Remove a channel from monitoring.
 
 **Parameters**:
-- `channel_id` (string): YouTube channel ID
-
-**Response**: `201 Created`
-```json
-{
-  "message": "Channel monitoring started",
-  "channel": {
-    "id": "UCxxxxxx",
-    "name": "Channel Name",
-    "is_monitored": true
-  }
-}
-```
-
----
-
-### Stop Monitoring Channel
-```http
-DELETE /api/channels/{channel_id}/monitor
-```
-
-Stops monitoring a specific channel.
-
-**Parameters**:
-- `channel_id` (string): YouTube channel ID
+- `channelId` (string): YouTube channel ID to remove
 
 **Response**: `200 OK`
 ```json
 {
-  "message": "Channel monitoring stopped",
+  "message": "Channel removed successfully",
   "channel_id": "UCxxxxxx"
+}
+```
+
+---
+
+### Reorder Channels (Optional)
+```http
+POST /api/channels/reorder
+Content-Type: application/json
+
+{
+  "order": ["UCxxx", "UCyyy", "UCzzz"]
+}
+```
+
+Update the display order of registered channels.
+
+**Body**: Array of channel IDs in desired order
+
+**Response**: `200 OK`
+```json
+{
+  "message": "Channel order updated successfully",
+  "order": ["UCxxx", "UCyyy", "UCzzz"]
 }
 ```
 

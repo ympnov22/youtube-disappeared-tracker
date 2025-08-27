@@ -8,7 +8,7 @@ This application monitors subscribed YouTube channels for video changes, storing
 
 ## Features
 
-- Track subscribed channels via YouTube Data API v3 (OAuth youtube.readonly)
+- Register up to 10 channels via web UI using URLs, @handles, or channel IDs
 - Store video metadata (no downloads)
 - Detect NEW / CHANGED / MISSING videos through periodic diffing
 - Simple web UI with dashboard and channel timeline
