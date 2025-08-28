@@ -3,6 +3,8 @@ from typing import Dict
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.channels import router as channels_router
+
 app = FastAPI(
     title="YouTube Disappeared Video Tracker",
     description="Track YouTube channel uploads and detect disappeared videos",
@@ -16,6 +18,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(channels_router, prefix="/api")
 
 
 @app.get("/")

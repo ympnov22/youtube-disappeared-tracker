@@ -63,12 +63,45 @@ jobs:
     - name: Install project
       run: poetry install --no-interaction
     
+    - name: Debug CI Environment
+      run: |
+        echo "=== Environment Details ==="
+        python -V
+        poetry --version
+        poetry run mypy --version
+        echo "=== Working Directory ==="
+        pwd && ls -la
+        echo "=== Git Status ==="
+        git rev-parse HEAD
+        git status --porcelain
+        echo "=== Package Structure ==="
+        find app -name "*.py" | head -10
+        ls -la app/
+    
+    - name: Clear Caches
+      run: |
+        echo "=== Clearing problematic caches ==="
+        rm -rf .mypy_cache .pytest_cache
+        find . -name "__pycache__" -type d -exec rm -rf {} + || true
+    
     - name: Run linting
       run: |
         poetry run black --check .
         poetry run isort --check-only .
         poetry run flake8 .
-        poetry run mypy .
+        echo "=== Running MyPy with verbose output ==="
+        poetry run mypy app --no-incremental --follow-imports=silent --pretty --show-traceback --verbose
+    
+    - name: Debug Failing Files
+      if: failure()
+      run: |
+        echo "=== Dumping potentially failing files ==="
+        echo "--- app/api/channels.py (first 50 lines) ---"
+        sed -n '1,50p' app/api/channels.py || echo "File not found"
+        echo "--- app/core/database.py ---"
+        cat app/core/database.py || echo "File not found"
+        echo "--- app/services/youtube_client.py (first 30 lines) ---"
+        sed -n '1,30p' app/services/youtube_client.py || echo "File not found"
     
     - name: Run tests
       env:
