@@ -110,7 +110,7 @@ jobs:
         APP_SECRET_KEY: test-secret-key
         SESSION_SECRET: test-session-secret
       run: |
-        poetry run pytest --cov=app --cov-report=xml
+        poetry run pytest --cov=app --cov-report=xml --cov-fail-under=85
     
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
