@@ -1,15 +1,15 @@
 """Add channels table
 
 Revision ID: 8dbdd85ed11e
-Revises: 
+Revises:
 Create Date: 2025-08-28 05:58:31.796558
 
 """
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
 
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "8dbdd85ed11e"
