@@ -1,8 +1,9 @@
+from typing import Generator
 from unittest.mock import Mock, patch
 
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.core.database import Base, get_db
@@ -20,7 +21,7 @@ TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engin
 Base.metadata.create_all(bind=engine)
 
 
-def override_get_db():
+def override_get_db() -> Generator[Session, None, None]:
     try:
         db = TestingSessionLocal()
         yield db
@@ -33,14 +34,14 @@ client = TestClient(app)
 
 
 class TestChannelsAPI:
-    def setup_method(self):
+    def setup_method(self) -> None:
         db = TestingSessionLocal()
         db.query(Channel).delete()
         db.commit()
         db.close()
 
     @patch("app.api.channels.YouTubeClient")
-    def test_add_channel_success(self, mock_youtube_client_class):
+    def test_add_channel_success(self, mock_youtube_client_class: Mock) -> None:
         mock_client = Mock()
         mock_youtube_client_class.return_value = mock_client
         mock_client.resolve_channel_input.return_value = (
@@ -64,7 +65,7 @@ class TestChannelsAPI:
         assert data["is_active"] is True
 
     @patch("app.api.channels.YouTubeClient")
-    def test_add_channel_not_found(self, mock_youtube_client_class):
+    def test_add_channel_not_found(self, mock_youtube_client_class: Mock) -> None:
         mock_client = Mock()
         mock_youtube_client_class.return_value = mock_client
         mock_client.resolve_channel_input.return_value = (None, None)
@@ -75,7 +76,7 @@ class TestChannelsAPI:
         assert "Channel not found" in response.json()["detail"]
 
     @patch("app.api.channels.YouTubeClient")
-    def test_add_channel_duplicate(self, mock_youtube_client_class):
+    def test_add_channel_duplicate(self, mock_youtube_client_class: Mock) -> None:
         mock_client = Mock()
         mock_youtube_client_class.return_value = mock_client
         mock_client.resolve_channel_input.return_value = (
@@ -100,7 +101,7 @@ class TestChannelsAPI:
         assert "already registered" in response2.json()["detail"]
 
     @patch("app.api.channels.YouTubeClient")
-    def test_add_channel_limit_exceeded(self, mock_youtube_client_class):
+    def test_add_channel_limit_exceeded(self, mock_youtube_client_class: Mock) -> None:
         mock_client = Mock()
         mock_youtube_client_class.return_value = mock_client
 
@@ -133,13 +134,13 @@ class TestChannelsAPI:
         assert "Maximum of 10 channels allowed" in response.json()["detail"]
 
     @patch("app.api.channels.YouTubeClient")
-    def test_list_channels_empty(self, mock_youtube_client_class):
+    def test_list_channels_empty(self, mock_youtube_client_class: Mock) -> None:
         response = client.get("/api/channels/")
         assert response.status_code == 200
         assert response.json() == []
 
     @patch("app.api.channels.YouTubeClient")
-    def test_list_channels_with_data(self, mock_youtube_client_class):
+    def test_list_channels_with_data(self, mock_youtube_client_class: Mock) -> None:
         mock_client = Mock()
         mock_youtube_client_class.return_value = mock_client
         mock_client.resolve_channel_input.return_value = (
@@ -164,7 +165,7 @@ class TestChannelsAPI:
         assert data[0]["title"] == "Test Channel"
 
     @patch("app.api.channels.YouTubeClient")
-    def test_remove_channel_success(self, mock_youtube_client_class):
+    def test_remove_channel_success(self, mock_youtube_client_class: Mock) -> None:
         mock_client = Mock()
         mock_youtube_client_class.return_value = mock_client
         mock_client.resolve_channel_input.return_value = (
@@ -188,13 +189,15 @@ class TestChannelsAPI:
         assert list_response.status_code == 200
         assert list_response.json() == []
 
-    def test_remove_channel_not_found(self):
+    def test_remove_channel_not_found(self) -> None:
         response = client.delete("/api/channels/UCrAOnWiW_Q1w5UhKjZhOJmA")
         assert response.status_code == 404
         assert "Channel not found" in response.json()["detail"]
 
     @patch("app.api.channels.YouTubeClient")
-    def test_remove_channel_already_removed(self, mock_youtube_client_class):
+    def test_remove_channel_already_removed(
+        self, mock_youtube_client_class: Mock
+    ) -> None:
         mock_client = Mock()
         mock_youtube_client_class.return_value = mock_client
         mock_client.resolve_channel_input.return_value = (
@@ -219,7 +222,9 @@ class TestChannelsAPI:
         assert "Channel not found" in remove_response2.json()["detail"]
 
     @patch("app.api.channels.YouTubeClient")
-    def test_youtube_api_configuration_error(self, mock_youtube_client_class):
+    def test_youtube_api_configuration_error(
+        self, mock_youtube_client_class: Mock
+    ) -> None:
         mock_youtube_client_class.side_effect = ValueError(
             "YOUTUBE_API_KEY environment variable is required"
         )

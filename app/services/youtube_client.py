@@ -8,7 +8,7 @@ from googleapiclient.errors import HttpError
 
 
 class YouTubeClient:
-    def __init__(self):
+    def __init__(self) -> None:
         self.api_key = os.getenv("YOUTUBE_API_KEY")
         if not self.api_key:
             raise ValueError("YOUTUBE_API_KEY environment variable is required")

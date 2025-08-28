@@ -13,7 +13,9 @@ router = APIRouter(prefix="/channels", tags=["channels"])
 
 
 @router.post("/", response_model=ChannelResponse, status_code=status.HTTP_201_CREATED)
-async def add_channel(channel_data: ChannelCreate, db: Session = Depends(get_db)):
+async def add_channel(
+    channel_data: ChannelCreate, db: Session = Depends(get_db)
+) -> ChannelResponse:
     """
     Add a new channel with validation, 10-channel limit, and deduplication.
 
@@ -81,7 +83,7 @@ async def add_channel(channel_data: ChannelCreate, db: Session = Depends(get_db)
 
 
 @router.get("/", response_model=List[ChannelResponse])
-async def list_channels(db: Session = Depends(get_db)):
+async def list_channels(db: Session = Depends(get_db)) -> List[ChannelResponse]:
     """
     List all registered channels with metadata.
 
@@ -97,7 +99,7 @@ async def list_channels(db: Session = Depends(get_db)):
 
 
 @router.delete("/{channel_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def remove_channel(channel_id: str, db: Session = Depends(get_db)):
+async def remove_channel(channel_id: str, db: Session = Depends(get_db)) -> None:
     """
     Remove a channel (soft delete).
 
@@ -116,7 +118,7 @@ async def remove_channel(channel_id: str, db: Session = Depends(get_db)):
             detail="Channel not found or already removed.",
         )
 
-    channel.is_active = False
+    channel.is_active = False  # type: ignore[assignment]
     db.commit()
 
     return None
