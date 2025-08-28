@@ -1,44 +1,50 @@
-from typing import Generator
+from typing import Callable, Generator
 from unittest.mock import Mock, patch
 
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import Engine, create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.core.database import Base, get_db
 from app.main import app
-from app.models.channel import Channel
-
-SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL,
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
-)
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-Base.metadata.create_all(bind=engine)
 
 
-def override_get_db() -> Generator[Session, None, None]:
-    try:
-        db = TestingSessionLocal()
-        yield db
-    finally:
-        db.close()
+def create_test_db_dependency(
+    engine: Engine,
+) -> Callable[[], Generator[Session, None, None]]:
+    """Create a test database session factory for dependency injection."""
+    TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+    def get_test_db() -> Generator[Session, None, None]:
+        try:
+            db = TestingSessionLocal()
+            yield db
+        finally:
+            db.close()
 
-app.dependency_overrides[get_db] = override_get_db
-client = TestClient(app)
+    return get_test_db
 
 
 class TestChannelsAPI:
     def setup_method(self) -> None:
-        db = TestingSessionLocal()
-        db.query(Channel).delete()
-        db.commit()
-        db.close()
+        self.engine = create_engine(
+            "sqlite:///:memory:",
+            connect_args={"check_same_thread": False},
+            poolclass=StaticPool,
+        )
+
+        Base.metadata.create_all(bind=self.engine)
+
+        test_app = FastAPI()
+        test_app.include_router(app.router)
+        test_app.dependency_overrides[get_db] = create_test_db_dependency(self.engine)
+        self.client = TestClient(test_app)
+
+    def teardown_method(self) -> None:
+        Base.metadata.drop_all(bind=self.engine)
+        self.engine.dispose()
 
     @patch("app.api.channels.YouTubeClient")
     def test_add_channel_success(self, mock_youtube_client_class: Mock) -> None:
@@ -55,7 +61,7 @@ class TestChannelsAPI:
             },
         )
 
-        response = client.post("/api/channels/", json={"input": "@testchannel"})
+        response = self.client.post("/api/channels/", json={"input": "@testchannel"})
 
         assert response.status_code == 201
         data = response.json()
@@ -70,7 +76,7 @@ class TestChannelsAPI:
         mock_youtube_client_class.return_value = mock_client
         mock_client.resolve_channel_input.return_value = (None, None)
 
-        response = client.post("/api/channels/", json={"input": "@nonexistent"})
+        response = self.client.post("/api/channels/", json={"input": "@nonexistent"})
 
         assert response.status_code == 404
         assert "Channel not found" in response.json()["detail"]
@@ -90,10 +96,10 @@ class TestChannelsAPI:
             },
         )
 
-        response1 = client.post("/api/channels/", json={"input": "@testchannel"})
+        response1 = self.client.post("/api/channels/", json={"input": "@testchannel"})
         assert response1.status_code == 201
 
-        response2 = client.post(
+        response2 = self.client.post(
             "/api/channels/",
             json={"input": "https://www.youtube.com/channel/UCrAOnWiW_Q1w5UhKjZhOJmA"},
         )
@@ -116,7 +122,9 @@ class TestChannelsAPI:
                     "uploads_playlist_id": f"UUrAOnWiW_Q1w5UhKjZhOJm{i:01d}",
                 },
             )
-            response = client.post("/api/channels/", json={"input": f"@testchannel{i}"})
+            response = self.client.post(
+                "/api/channels/", json={"input": f"@testchannel{i}"}
+            )
             assert response.status_code == 201
 
         mock_client.resolve_channel_input.return_value = (
@@ -129,13 +137,13 @@ class TestChannelsAPI:
                 "uploads_playlist_id": "UUrAOnWiW_Q1w5UhKjZhOJmX",
             },
         )
-        response = client.post("/api/channels/", json={"input": "@testchannelX"})
+        response = self.client.post("/api/channels/", json={"input": "@testchannelX"})
         assert response.status_code == 400
         assert "Maximum of 10 channels allowed" in response.json()["detail"]
 
     @patch("app.api.channels.YouTubeClient")
     def test_list_channels_empty(self, mock_youtube_client_class: Mock) -> None:
-        response = client.get("/api/channels/")
+        response = self.client.get("/api/channels/")
         assert response.status_code == 200
         assert response.json() == []
 
@@ -154,10 +162,12 @@ class TestChannelsAPI:
             },
         )
 
-        add_response = client.post("/api/channels/", json={"input": "@testchannel"})
+        add_response = self.client.post(
+            "/api/channels/", json={"input": "@testchannel"}
+        )
         assert add_response.status_code == 201
 
-        list_response = client.get("/api/channels/")
+        list_response = self.client.get("/api/channels/")
         assert list_response.status_code == 200
         data = list_response.json()
         assert len(data) == 1
@@ -179,18 +189,20 @@ class TestChannelsAPI:
             },
         )
 
-        add_response = client.post("/api/channels/", json={"input": "@testchannel"})
+        add_response = self.client.post(
+            "/api/channels/", json={"input": "@testchannel"}
+        )
         assert add_response.status_code == 201
 
-        remove_response = client.delete("/api/channels/UCrAOnWiW_Q1w5UhKjZhOJmA")
+        remove_response = self.client.delete("/api/channels/UCrAOnWiW_Q1w5UhKjZhOJmA")
         assert remove_response.status_code == 204
 
-        list_response = client.get("/api/channels/")
+        list_response = self.client.get("/api/channels/")
         assert list_response.status_code == 200
         assert list_response.json() == []
 
     def test_remove_channel_not_found(self) -> None:
-        response = client.delete("/api/channels/UCrAOnWiW_Q1w5UhKjZhOJmA")
+        response = self.client.delete("/api/channels/UCrAOnWiW_Q1w5UhKjZhOJmA")
         assert response.status_code == 404
         assert "Channel not found" in response.json()["detail"]
 
@@ -211,13 +223,15 @@ class TestChannelsAPI:
             },
         )
 
-        add_response = client.post("/api/channels/", json={"input": "@testchannel"})
+        add_response = self.client.post(
+            "/api/channels/", json={"input": "@testchannel"}
+        )
         assert add_response.status_code == 201
 
-        remove_response1 = client.delete("/api/channels/UCrAOnWiW_Q1w5UhKjZhOJmA")
+        remove_response1 = self.client.delete("/api/channels/UCrAOnWiW_Q1w5UhKjZhOJmA")
         assert remove_response1.status_code == 204
 
-        remove_response2 = client.delete("/api/channels/UCrAOnWiW_Q1w5UhKjZhOJmA")
+        remove_response2 = self.client.delete("/api/channels/UCrAOnWiW_Q1w5UhKjZhOJmA")
         assert remove_response2.status_code == 404
         assert "Channel not found" in remove_response2.json()["detail"]
 
@@ -229,6 +243,6 @@ class TestChannelsAPI:
             "YOUTUBE_API_KEY environment variable is required"
         )
 
-        response = client.post("/api/channels/", json={"input": "@testchannel"})
+        response = self.client.post("/api/channels/", json={"input": "@testchannel"})
         assert response.status_code == 500
         assert "YouTube API configuration error" in response.json()["detail"]

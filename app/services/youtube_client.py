@@ -1,6 +1,8 @@
 import os
 import re
-from typing import Dict, Optional, Tuple
+import time
+from datetime import datetime
+from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urlparse
 
 from googleapiclient.discovery import build  # type: ignore[import-untyped]
@@ -176,3 +178,120 @@ class YouTubeClient:
                 "uploads"
             ),
         }
+
+    def fetch_channel_videos(
+        self, uploads_playlist_id: str, max_results: int = 50
+    ) -> List[Dict]:
+        """
+        Fetch videos from a channel's uploads playlist.
+
+        Args:
+            uploads_playlist_id: The uploads playlist ID for the channel
+            max_results: Maximum number of videos to fetch
+
+        Returns:
+            List of video metadata dictionaries
+        """
+        videos: list[dict[str, Any]] = []
+        next_page_token = None
+
+        try:
+            while len(videos) < max_results:
+                request = self.youtube.playlistItems().list(
+                    part="snippet,contentDetails",
+                    playlistId=uploads_playlist_id,
+                    maxResults=min(50, max_results - len(videos)),
+                    pageToken=next_page_token,
+                )
+
+                time.sleep(0.1)
+
+                response = request.execute()
+                items = response.get("items", [])
+
+                if not items:
+                    break
+
+                video_ids = [item["contentDetails"]["videoId"] for item in items]
+                video_details = self._get_video_details(video_ids)
+
+                for item in items:
+                    video_id = item["contentDetails"]["videoId"]
+                    video_detail = video_details.get(video_id, {})
+
+                    if not video_detail:
+                        continue
+
+                    video_metadata = self._extract_video_metadata(item, video_detail)
+                    if video_metadata:
+                        videos.append(video_metadata)
+
+                next_page_token = response.get("nextPageToken")
+                if not next_page_token:
+                    break
+
+        except HttpError as e:
+            if e.resp.status in [403, 429]:
+                raise
+            return videos
+
+        return videos
+
+    def _get_video_details(self, video_ids: List[str]) -> Dict[str, Dict]:
+        """Get detailed video information for a list of video IDs."""
+        if not video_ids:
+            return {}
+
+        try:
+            request = self.youtube.videos().list(
+                part="snippet,contentDetails,statistics,status",
+                id=",".join(video_ids),
+            )
+
+            time.sleep(0.1)
+
+            response = request.execute()
+            items = response.get("items", [])
+
+            return {item["id"]: item for item in items}
+
+        except HttpError:
+            return {}
+
+    def _extract_video_metadata(
+        self, playlist_item: Dict, video_detail: Dict
+    ) -> Optional[Dict]:
+        """Extract video metadata from playlist item and video details."""
+        try:
+            snippet = video_detail.get("snippet", {})
+            content_details = video_detail.get("contentDetails", {})
+            statistics = video_detail.get("statistics", {})
+            status = video_detail.get("status", {})
+
+            if status.get("privacyStatus") == "private":
+                return None
+
+            published_at_str = snippet.get("publishedAt")
+            if not published_at_str:
+                return None
+
+            published_at = datetime.fromisoformat(
+                published_at_str.replace("Z", "+00:00")
+            )
+
+            return {
+                "video_id": video_detail["id"],
+                "title": snippet.get("title", ""),
+                "description": snippet.get("description", ""),
+                "thumbnail_url": snippet.get("thumbnails", {})
+                .get("default", {})
+                .get("url"),
+                "published_at": published_at,
+                "duration": content_details.get("duration"),
+                "view_count": int(statistics.get("viewCount", 0))
+                if statistics.get("viewCount")
+                else None,
+            }
+
+        except (KeyError, ValueError, TypeError):
+            return None
