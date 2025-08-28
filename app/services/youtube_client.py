@@ -3,8 +3,8 @@ import re
 from typing import Dict, Optional, Tuple
 from urllib.parse import urlparse
 
-from googleapiclient.discovery import build
-from googleapiclient.errors import HttpError
+from googleapiclient.discovery import build  # type: ignore[import-untyped]
+from googleapiclient.errors import HttpError  # type: ignore[import-untyped]
 
 
 class YouTubeClient:
