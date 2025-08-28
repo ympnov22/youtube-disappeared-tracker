@@ -10,11 +10,11 @@ This document describes the REST API endpoints for the YouTube Disappeared Video
 
 ---
 
-## Channel Management
+## Channel Management (Phase 1)
 
 ### Register Channel
 ```http
-POST /api/channels
+POST /channels
 Content-Type: application/json
 
 {
@@ -22,13 +22,22 @@ Content-Type: application/json
 }
 ```
 
-**Description**: Register a new channel for monitoring (max 10)  
-**Input Examples**:
-- `https://www.youtube.com/channel/UCxxx`
-- `https://www.youtube.com/@handle`
-- `https://www.youtube.com/c/channelname`
-- `@handle`
-- `UCxxx` (raw channel ID)
+**Description**: Register a new channel for monitoring (max 10 channels per user)
+
+**Input Formats Supported**:
+- Full channel URLs:
+  - `https://www.youtube.com/channel/UCxxx`
+  - `https://www.youtube.com/@handle`
+  - `https://www.youtube.com/user/username`
+  - `https://www.youtube.com/c/customname`
+- Handle format: `@handle`
+- Raw channel ID: `UCxxx`
+
+**Validation Rules**:
+- Maximum 10 active channels per user
+- No duplicate channels (checked across all input formats)
+- Channel must exist and be accessible via YouTube API
+- Input format must be valid
 
 **Response**: `201 Created`
 ```json
@@ -37,71 +46,147 @@ Content-Type: application/json
     "id": "UCxxxxxx",
     "title": "Channel Name",
     "description": "Channel description",
-    "thumbnail_url": "https://...",
+    "thumbnail_url": "https://yt3.ggpht.com/...",
     "subscriber_count": 1000000,
+    "uploads_playlist_id": "UUxxxxxx",
     "source_input": "@handle",
     "is_active": true,
-    "added_at": "2025-08-27T10:30:00Z"
+    "added_at": "2025-08-27T19:05:00Z"
+  },
+  "usage": {
+    "current": 8,
+    "limit": 10,
+    "remaining": 2
   },
   "message": "Channel registered successfully"
 }
 ```
 
-### List Registered Channels
-```http
-GET /api/channels
+**Error Responses**:
+```json
+// 400 Bad Request - Invalid input format
+{
+  "error": "invalid_input",
+  "message": "Invalid channel input format",
+  "details": {
+    "input": "@invalid-handle",
+    "supported_formats": [
+      "https://www.youtube.com/channel/UCxxx",
+      "https://www.youtube.com/@handle",
+      "@handle",
+      "UCxxx"
+    ]
+  }
+}
+
+// 409 Conflict - Channel limit exceeded
+{
+  "error": "channel_limit_exceeded",
+  "message": "Maximum of 10 channels allowed",
+  "details": {
+    "current_count": 10,
+    "limit": 10
+  }
+}
+
+// 409 Conflict - Duplicate channel
+{
+  "error": "duplicate_channel",
+  "message": "Channel already registered",
+  "details": {
+    "channel_id": "UCxxxxxx",
+    "existing_source_input": "https://www.youtube.com/channel/UCxxxxxx",
+    "attempted_input": "@handle"
+  }
+}
+
+// 404 Not Found - Channel not found
+{
+  "error": "channel_not_found",
+  "message": "Channel not found or not accessible",
+  "details": {
+    "input": "@nonexistent",
+    "resolved_to": null
+  }
+}
 ```
 
-Returns list of user-registered channels.
+### List Registered Channels
+```http
+GET /channels
+```
 
-**Response**:
+Returns list of user-registered channels with usage information.
+
+**Response**: `200 OK`
 ```json
 {
   "channels": [
     {
       "id": "UCxxxxxx",
-      "name": "Channel Name",
+      "title": "Channel Name",
       "description": "Channel description",
+      "thumbnail_url": "https://yt3.ggpht.com/...",
       "subscriber_count": 1000000,
-      "thumbnail_url": "https://...",
-      "is_monitored": true,
-      "last_checked": "2025-01-15T10:30:00Z",
-      "video_count": 150,
-      "created_at": "2025-01-01T00:00:00Z",
-      "updated_at": "2025-01-15T10:30:00Z"
+      "uploads_playlist_id": "UUxxxxxx",
+      "source_input": "@handle",
+      "is_active": true,
+      "added_at": "2025-08-27T19:05:00Z",
+      "last_checked": "2025-08-27T18:30:00Z",
+      "video_count": 150
     }
   ],
-  "total": 1,
-  "page": 1,
-  "per_page": 20
+  "usage": {
+    "current": 8,
+    "limit": 10,
+    "remaining": 2
+  },
+  "total": 8
 }
 ```
 
----
-
 ### Remove Channel
 ```http
-DELETE /api/channels/{channelId}
+DELETE /channels/{channelId}
 ```
 
-Remove a channel from monitoring.
+Remove a channel from monitoring (soft delete - sets is_active = false).
 
 **Parameters**:
-- `channelId` (string): YouTube channel ID to remove
+- `channelId` (string, required): YouTube channel ID to remove
 
 **Response**: `200 OK`
 ```json
 {
   "message": "Channel removed successfully",
-  "channel_id": "UCxxxxxx"
+  "channel": {
+    "id": "UCxxxxxx",
+    "title": "Channel Name",
+    "source_input": "@handle"
+  },
+  "usage": {
+    "current": 7,
+    "limit": 10,
+    "remaining": 3
+  }
 }
 ```
 
----
+**Error Responses**:
+```json
+// 404 Not Found - Channel not registered
+{
+  "error": "channel_not_registered",
+  "message": "Channel not found in your registered channels",
+  "details": {
+    "channel_id": "UCxxxxxx"
+  }
+}
+```
 
 ### Reorder Channels (Optional)
 ```http
-POST /api/channels/reorder
+POST /channels/reorder
 Content-Type: application/json
 
 {
@@ -111,13 +196,44 @@ Content-Type: application/json
 
 Update the display order of registered channels.
 
-**Body**: Array of channel IDs in desired order
+**Request Body**:
+- `order` (array of strings, required): Array of channel IDs in desired order
+
+**Validation**:
+- All channel IDs must belong to the user's registered channels
+- Array must contain all currently active channels
+- No duplicate channel IDs allowed
 
 **Response**: `200 OK`
 ```json
 {
   "message": "Channel order updated successfully",
-  "order": ["UCxxx", "UCyyy", "UCzzz"]
+  "channels": [
+    {
+      "id": "UCxxx",
+      "title": "First Channel",
+      "order": 1
+    },
+    {
+      "id": "UCyyy", 
+      "title": "Second Channel",
+      "order": 2
+    }
+  ]
+}
+```
+
+**Error Responses**:
+```json
+// 400 Bad Request - Invalid channel IDs
+{
+  "error": "invalid_channel_order",
+  "message": "Order contains invalid or missing channel IDs",
+  "details": {
+    "invalid_ids": ["UCzzz"],
+    "missing_ids": ["UCaaa"],
+    "user_channels": ["UCxxx", "UCyyy", "UCaaa"]
+  }
 }
 ```
 

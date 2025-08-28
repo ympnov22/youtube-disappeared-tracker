@@ -7,9 +7,9 @@ This project will be developed in incremental phases, each building upon the pre
 ---
 
 ## Phase 0: Project Bootstrap & Foundation
-**Status**: In Progress  
-**Duration**: 1-2 hours  
-**Branch**: `devin/{timestamp}-phase0-bootstrap`
+**Status**: ✅ Complete  
+**Duration**: 3 hours  
+**Branch**: `devin/1756288215-phase0-bootstrap` (merged to main)
 
 ### Objectives
 - Set up project repository structure
@@ -21,11 +21,13 @@ This project will be developed in incremental phases, each building upon the pre
 - [x] Create repository structure (`/app`, `/tests`, `/docs`, `/.github`)
 - [x] Write technical specification document
 - [x] Create phases breakdown document
-- [ ] Set up GitHub issue templates and PR template
-- [ ] Initialize basic Docker configuration
-- [ ] Create initial API documentation structure
-- [ ] Set up basic CI/CD workflow (GitHub Actions)
-- [ ] Initialize git repository with proper branch structure
+- [x] Set up GitHub issue templates and PR template
+- [x] Initialize Docker configuration with multi-stage build
+- [x] Create initial API documentation structure
+- [x] Set up CI/CD workflow (GitHub Actions) with security, test, and build checks
+- [x] Initialize git repository with proper branch structure
+- [x] Implement Continuity Kit for session handoffs
+- [x] Resolve CI issues (security vulnerabilities, Docker build fixes)
 
 ### Deliverables
 - Complete project structure
@@ -47,41 +49,110 @@ This project will be developed in incremental phases, each building upon the pre
 ---
 
 ## Phase 1: Channel Management & Resolver
-**Status**: Planned  
+**Status**: 🚀 Ready to Start  
 **Duration**: 3-4 hours  
 **Branch**: `devin/{timestamp}-phase1-channels`
 
 ### Objectives
-- Implement channel registration and resolution system
-- Create YouTube API client with API key authentication
-- Build channel management UI and API endpoints
-- Enforce 10-channel limit with duplicate prevention
+- Implement user-managed channel registration system (max 10 channels)
+- Create channel resolver to handle URLs, @handles, and channel IDs
+- Build channel management API with CRUD operations
+- Create channel management UI with usage counter and validation
 
 ### Tasks
-- [ ] Set up FastAPI application structure
-- [ ] Implement channel input parser for URLs, @handles, and IDs
-- [ ] Create YouTube Data API v3 client with API key
-- [ ] Build channel resolver to convert inputs to canonical channel IDs
-- [ ] Implement channel management API endpoints
-- [ ] Update database schema with new channel fields
-- [ ] Create channel management settings page UI
-- [ ] Enforce 10-channel limit and duplicate prevention
-- [ ] Write unit tests for channel operations
+
+#### Channels API Implementation
+- [ ] **POST /channels** - Add new channel with input validation
+  - Accept: Full channel URL (/channel/UC…, /@handle, /user/..., /c/...)
+  - Accept: @handle format
+  - Accept: Raw channelId (UC…)
+  - Validate: Max 10 active channels per user
+  - Validate: No duplicate channels
+  - Return: channelId, title, source_input, added_at
+- [ ] **GET /channels** - List all registered channels
+  - Return: channelId, title, source_input, added_at, is_active
+  - Include: Usage counter (X/10 used)
+- [ ] **DELETE /channels/{channelId}** - Remove channel
+  - Validate: Channel exists and belongs to user
+  - Soft delete: Set is_active = false
+- [ ] **POST /channels/reorder** (optional) - Reorder channels
+  - Accept: Array of channelIds in desired order
+
+#### Channel Resolver Service
+- [ ] **URL Parser** - Extract channel info from various URL formats
+  - Handle: youtube.com/channel/UC...
+  - Handle: youtube.com/@handle
+  - Handle: youtube.com/user/username
+  - Handle: youtube.com/c/customname
+- [ ] **YouTube API Integration** - Resolve to canonical channel data
+  - Use: YouTube Data API v3 with API key (no OAuth)
+  - Resolve: @handle → channelId via search
+  - Fetch: Channel title, uploads playlist ID
+  - Handle: API rate limiting and errors
+- [ ] **Channel Validator** - Ensure channel exists and is accessible
+  - Verify: Channel exists via channels.list API
+  - Extract: uploads_playlist_id for video fetching
+  - Store: Original source_input for user reference
+
+#### Channels Management UI
+- [ ] **Settings → Channels Page** - Main channel management interface
+  - Input box with placeholder: "Enter channel URL, @handle, or channel ID"
+  - "Add Channel" button with loading state
+  - Channel list with: title, channelId, added date, status
+  - Remove button for each channel
+  - Usage indicator: "7/10 channels used"
+  - Error handling for invalid inputs, duplicates, limit exceeded
+- [ ] **Channel List Component** - Display registered channels
+  - Show: Channel thumbnail, title, subscriber count (if available)
+  - Show: Added date, source input format
+  - Action: Remove button with confirmation dialog
+- [ ] **Add Channel Form** - Input validation and feedback
+  - Real-time validation of input format
+  - Loading state during resolution
+  - Success/error messages
+  - Auto-clear input on successful add
+
+#### Database Schema Updates
+- [ ] **ALTER TABLE channels** - Add new fields for user-managed channels
+  ```sql
+  ALTER TABLE channels
+    ADD COLUMN source_input TEXT,
+    ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT true,
+    ADD COLUMN added_at TIMESTAMP NOT NULL DEFAULT now();
+  
+  CREATE UNIQUE INDEX IF NOT EXISTS ux_channels_id ON channels(id);
+  ```
+
+#### Testing & Documentation
+- [ ] **Unit Tests** - Channel operations and validation
+  - Test: URL parsing for all supported formats
+  - Test: API endpoint validation and error handling
+  - Test: 10-channel limit enforcement
+  - Test: Duplicate prevention logic
+- [ ] **Integration Tests** - YouTube API integration
+  - Test: Channel resolution via API
+  - Test: Error handling for invalid channels
+  - Test: Rate limiting behavior
+- [ ] **API Documentation** - Update docs/api.md with new endpoints
 
 ### Deliverables
-- Channel registration and resolution system
-- Channel management API endpoints
-- Updated database schema and migrations
-- Channel management UI page
-- YouTube API client with API key authentication
-- Unit tests for channel operations
+- **Channel Management API** - Complete CRUD operations with validation
+- **Channel Resolver Service** - URL/handle to channelId conversion
+- **Channel Management UI** - User-friendly settings page
+- **Database Schema** - Updated with new channel fields
+- **YouTube API Client** - API key-based integration (no OAuth)
+- **Test Suite** - Comprehensive unit and integration tests
+- **Documentation** - Updated API docs and user guides
 
 ### Success Criteria
-- Users can register channels via URL, @handle, or channel ID
-- System resolves various input formats to canonical channel IDs
-- 10-channel limit is enforced with duplicate prevention
-- Channel management UI is functional and user-friendly
-- All tests pass
+- ✅ Users can register up to 10 channels via URL, @handle, or channel ID
+- ✅ System correctly resolves all supported input formats to canonical channel IDs
+- ✅ 10-channel limit is strictly enforced with clear error messages
+- ✅ Duplicate channels are prevented across all input formats
+- ✅ Channel management UI is intuitive with real-time feedback
+- ✅ All API endpoints handle errors gracefully
+- ✅ Test coverage > 80% for all channel operations
+- ✅ YouTube API integration works reliably with rate limiting
 
 ---
 
