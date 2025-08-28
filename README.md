@@ -43,6 +43,8 @@ This application monitors subscribed YouTube channels for video changes, storing
 
 This project follows a phased development approach with clear milestones and documentation requirements.
 
+For detailed development guidelines and operational procedures, see [Project Guidelines](docs/project_guidelines.md).
+
 ## License
 
 MIT License
