@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from datetime import datetime
 from typing import Tuple
@@ -7,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.models.channel import Channel
 from app.models.disappearance_event import DisappearanceEvent, EventType
 from app.models.video import Video
+from app.services.slack_notifier import SlackNotifier
 from app.services.youtube_client import YouTubeClient
 
 logger = logging.getLogger(__name__)
@@ -16,6 +18,7 @@ class VideoIngestionService:
     def __init__(self, db: Session, youtube_client: YouTubeClient):
         self.db = db
         self.youtube_client = youtube_client
+        self.slack_notifier = SlackNotifier()
 
     def scan_channel(self, channel_id: str) -> Tuple[int, int, int]:
         """
@@ -99,10 +102,36 @@ class VideoIngestionService:
                 event = DisappearanceEvent(
                     video_id=video_id,
                     event_type=EventType.UNKNOWN,
-                    details={"title": video.title, "channel_id": channel_id},
+                    details={
+                        "title": video.title,
+                        "channel_id": channel_id,
+                        "channel_title": channel.title,
+                        "view_count": video.view_count,
+                        "duration": video.duration,
+                        "published_at": video.published_at.isoformat()
+                        if video.published_at
+                        else None,
+                    },
                 )
                 self.db.add(event)
                 events_created_count += 1
+
+                try:
+                    loop = asyncio.get_event_loop()
+                    if loop.is_running():
+                        asyncio.create_task(
+                            self.slack_notifier.send_disappearance_alert(
+                                event, video, channel
+                            )
+                        )
+                    else:
+                        asyncio.run(
+                            self.slack_notifier.send_disappearance_alert(
+                                event, video, channel
+                            )
+                        )
+                except Exception as e:
+                    logger.warning(f"Failed to send Slack notification: {e}")
 
         self.db.commit()
         return added_count, updated_count, events_created_count

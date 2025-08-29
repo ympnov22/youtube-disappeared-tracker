@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}Channels - YouTube Tracker Admin{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Channels</h2>
+    <button class="btn btn-primary" onclick="showAddChannelForm()">Add Channel</button>
+</div>
+
+<div id="add-channel-form" class="form-container" style="display: none;">
+    <h3>Add New Channel</h3>
+    <form method="post" action="/admin/channels/add">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div class="form-group">
+            <label for="channel_input">Channel URL, @handle, or Channel ID:</label>
+            <input type="text" id="channel_input" name="channel_input" required 
+                   placeholder="https://youtube.com/@channel or UCxxxxxxxxx">
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Add Channel</button>
+            <button type="button" class="btn btn-secondary" onclick="hideAddChannelForm()">Cancel</button>
+        </div>
+    </form>
+</div>
+
+<div class="channels-grid">
+    {% for channel in channels %}
+    <div class="channel-card">
+        <div class="channel-header">
+            <img src="{{ channel.thumbnail_url or '/static/images/default-channel.png' }}" 
+                 alt="{{ channel.title }}" class="channel-thumbnail">
+            <div class="channel-info">
+                <h3><a href="/admin/channels/{{ channel.channel_id }}/videos">{{ channel.title }}</a></h3>
+                <p class="channel-id">{{ channel.channel_id }}</p>
+                <p class="channel-source">Source: {{ channel.source_input }}</p>
+            </div>
+        </div>
+        
+        <div class="channel-actions">
+            <form method="post" action="/admin/channels/{{ channel.channel_id }}/scan" style="display: inline;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button type="submit" class="btn btn-scan" onclick="return confirmScan('{{ channel.title }}')">
+                    Scan Now
+                </button>
+            </form>
+            
+            <form method="post" action="/admin/channels/{{ channel.channel_id }}/delete" style="display: inline;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button type="submit" class="btn btn-danger" onclick="return confirmDelete('{{ channel.title }}')">
+                    Delete
+                </button>
+            </form>
+        </div>
+        
+        <div class="channel-stats">
+            <span class="stat">Added: {{ channel.added_at.strftime('%Y-%m-%d') }}</span>
+            <span class="stat">Updated: {{ channel.updated_at.strftime('%Y-%m-%d') }}</span>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+{% if not channels %}
+<div class="empty-state">
+    <h3>No channels added yet</h3>
+    <p>Click "Add Channel" to start monitoring YouTube channels.</p>
+</div>
+{% endif %}
+{% endblock %}

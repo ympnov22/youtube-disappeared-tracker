@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}{{ channel.title }} Videos - YouTube Tracker Admin{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>{{ channel.title }} Videos</h2>
+    <a href="/admin" class="btn btn-secondary">← Back to Channels</a>
+</div>
+
+<div class="channel-info-bar">
+    <span class="channel-id">Channel ID: {{ channel.channel_id }}</span>
+    <form method="post" action="/admin/channels/{{ channel.channel_id }}/scan" style="display: inline;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit" class="btn btn-scan">Refresh Videos</button>
+    </form>
+</div>
+
+<div class="videos-table-container">
+    <table class="videos-table">
+        <thead>
+            <tr>
+                <th>Published</th>
+                <th>Title</th>
+                <th>Status</th>
+                <th>Views</th>
+                <th>Duration</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for video in videos %}
+            <tr class="video-row {{ 'missing' if not video.is_available else 'available' }}">
+                <td class="published-date">
+                    {{ video.published_at.strftime('%Y-%m-%d %H:%M') }}
+                </td>
+                <td class="video-title">
+                    <div class="title-container">
+                        <span class="title">{{ video.title }}</span>
+                        {% if video.description %}
+                        <span class="description">{{ video.description[:100] }}{% if video.description|length > 100 %}...{% endif %}</span>
+                        {% endif %}
+                    </div>
+                </td>
+                <td class="video-status">
+                    {% if video.is_available %}
+                        <span class="status-badge status-active">Active</span>
+                    {% else %}
+                        <span class="status-badge status-missing">Missing</span>
+                    {% endif %}
+                </td>
+                <td class="view-count">
+                    {% if video.view_count %}
+                        {{ "{:,}".format(video.view_count) }}
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+                <td class="duration">
+                    {{ video.duration or '-' }}
+                </td>
+                <td class="video-actions">
+                    <a href="https://www.youtube.com/watch?v={{ video.video_id }}" 
+                       target="_blank" class="btn btn-link">
+                        View on YouTube
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if not videos %}
+<div class="empty-state">
+    <h3>No videos found</h3>
+    <p>This channel has no videos or hasn't been scanned yet.</p>
+    <form method="post" action="/admin/channels/{{ channel.channel_id }}/scan">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit" class="btn btn-primary">Scan Channel Now</button>
+    </form>
+</div>
+{% endif %}
+{% endblock %}

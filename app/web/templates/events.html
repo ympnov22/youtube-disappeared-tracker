@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block title %}Disappearance Events - YouTube Tracker Admin{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Disappearance Events</h2>
+    <a href="/admin" class="btn btn-secondary">← Back to Channels</a>
+</div>
+
+<div class="events-filters">
+    <form method="get" class="filters-form">
+        <div class="filter-group">
+            <label for="event_type">Event Type:</label>
+            <select id="event_type" name="event_type">
+                <option value="">All Types</option>
+                <option value="PRIVATE">Private</option>
+                <option value="DELETED">Deleted</option>
+                <option value="GEO_BLOCKED">Geo-blocked</option>
+                <option value="AGE_RESTRICTED">Age-restricted</option>
+                <option value="UNKNOWN">Unknown</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label for="since">Since:</label>
+            <input type="date" id="since" name="since">
+        </div>
+        <button type="submit" class="btn btn-primary">Filter</button>
+    </form>
+</div>
+
+<div class="events-table-container">
+    <table class="events-table">
+        <thead>
+            <tr>
+                <th>Detected</th>
+                <th>Channel</th>
+                <th>Video</th>
+                <th>Event Type</th>
+                <th>Details</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for event in events %}
+            <tr class="event-row event-{{ event.event_type.value.lower() }}">
+                <td class="detected-date">
+                    {{ event.detected_at.strftime('%Y-%m-%d %H:%M:%S') }}
+                </td>
+                <td class="channel-info">
+                    {% if event.details and event.details.get('channel_id') %}
+                        <a href="/admin/channels/{{ event.details.channel_id }}/videos">
+                            {{ event.details.get('channel_title', event.details.channel_id) }}
+                        </a>
+                    {% else %}
+                        Unknown Channel
+                    {% endif %}
+                </td>
+                <td class="video-info">
+                    <div class="video-title">
+                        {{ event.details.get('title', 'Unknown Video') if event.details else 'Unknown Video' }}
+                    </div>
+                    <div class="video-id">{{ event.video_id }}</div>
+                </td>
+                <td class="event-type">
+                    <span class="event-badge event-{{ event.event_type.value.lower() }}">
+                        {{ event.event_type.value.replace('_', ' ').title() }}
+                    </span>
+                </td>
+                <td class="event-details">
+                    {% if event.details %}
+                        <details>
+                            <summary>View Details</summary>
+                            <pre>{{ event.details | tojson(indent=2) }}</pre>
+                        </details>
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+                <td class="event-actions">
+                    <a href="https://www.youtube.com/watch?v={{ event.video_id }}" 
+                       target="_blank" class="btn btn-link">
+                        Check YouTube
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if not events %}
+<div class="empty-state">
+    <h3>No disappearance events</h3>
+    <p>No videos have disappeared yet, or no channels have been scanned.</p>
+</div>
+{% endif %}
+{% endblock %}
