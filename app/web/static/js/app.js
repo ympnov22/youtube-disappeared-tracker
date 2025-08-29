@@ -4,6 +4,59 @@ function getCSRFToken() {
     return meta ? meta.getAttribute('content') : null;
 }
 
+function showToast(message, type = 'info', duration = 5000) {
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    
+    const icon = {
+        'success': '✅',
+        'error': '❌', 
+        'warning': '⚠️',
+        'info': 'ℹ️'
+    }[type] || 'ℹ️';
+    
+    toast.innerHTML = `
+        <span class="toast-icon">${icon}</span>
+        <span class="toast-message">${message}</span>
+        <button class="toast-close" onclick="this.parentElement.remove()">×</button>
+    `;
+    
+    let container = document.querySelector('.toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.className = 'toast-container';
+        document.body.appendChild(container);
+    }
+    
+    container.appendChild(toast);
+    
+    setTimeout(() => {
+        if (toast.parentElement) {
+            toast.style.opacity = '0';
+            setTimeout(() => toast.remove(), 300);
+        }
+    }, duration);
+}
+
+function handleFormSubmission(form, button) {
+    const originalText = button.querySelector('.btn-text');
+    const loadingText = button.querySelector('.btn-loading');
+    
+    if (originalText && loadingText) {
+        originalText.style.display = 'none';
+        loadingText.style.display = 'inline-flex';
+        button.disabled = true;
+    }
+    
+    setTimeout(() => {
+        if (originalText && loadingText) {
+            originalText.style.display = 'inline';
+            loadingText.style.display = 'none';
+            button.disabled = false;
+        }
+    }, 10000);
+}
+
 function showAddChannelForm() {
     const form = document.getElementById('add-channel-form');
     if (form) {
@@ -123,8 +176,15 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     if (window.location.pathname.includes('/events')) {
-        startAutoRefresh(60000); // Refresh every minute
+        startAutoRefresh(60000);
     }
+    
+    const scanButtons = document.querySelectorAll('.scan-btn');
+    scanButtons.forEach(button => {
+        button.addEventListener('click', function(e) {
+            handleFormSubmission(this.closest('form'), this);
+        });
+    });
     
     enhanceTableInteractions();
 });

@@ -4,9 +4,41 @@
 
 {% block content %}
 <div class="page-header">
-    <h2>Channels</h2>
-    <button class="btn btn-primary" onclick="showAddChannelForm()">Add Channel</button>
+    <h2>Channels ({{ total_channels }})</h2>
+    <div class="header-actions">
+        <button class="btn btn-primary" onclick="showAddChannelForm()">Add Channel</button>
+    </div>
 </div>
+
+<!-- Search and Filters -->
+<div class="filters-section">
+    <form method="get" class="search-form">
+        <div class="search-group">
+            <input type="text" name="search" value="{{ search }}" placeholder="Search channels..." class="search-input">
+            <button type="submit" class="btn btn-secondary">Search</button>
+            {% if search %}
+            <a href="/admin/channels" class="btn btn-outline">Clear</a>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
+<!-- Pagination (top) -->
+{% if total_pages > 1 %}
+<div class="pagination-wrapper">
+    <nav class="pagination">
+        {% if has_prev %}
+        <a href="?page={{ prev_page }}{% if search %}&search={{ search }}{% endif %}" class="pagination-link">← Previous</a>
+        {% endif %}
+        
+        <span class="pagination-info">Page {{ current_page }} of {{ total_pages }}</span>
+        
+        {% if has_next %}
+        <a href="?page={{ next_page }}{% if search %}&search={{ search }}{% endif %}" class="pagination-link">Next →</a>
+        {% endif %}
+    </nav>
+</div>
+{% endif %}
 
 <div id="add-channel-form" class="form-container" style="display: none;">
     <h3>Add New Channel</h3>
@@ -24,47 +56,68 @@
     </form>
 </div>
 
+{% if channels %}
 <div class="channels-grid">
     {% for channel in channels %}
     <div class="channel-card">
-        <div class="channel-header">
-            <img src="{{ channel.thumbnail_url or '/static/images/default-channel.png' }}" 
-                 alt="{{ channel.title }}" class="channel-thumbnail">
-            <div class="channel-info">
+        <div class="channel-info">
+            {% if channel.thumbnail_url %}
+            <img src="{{ channel.thumbnail_url }}" alt="{{ channel.title }}" class="channel-thumbnail">
+            {% else %}
+            <div class="channel-thumbnail-placeholder">
+                <span class="placeholder-icon">📺</span>
+            </div>
+            {% endif %}
+            <div class="channel-details">
                 <h3><a href="/admin/channels/{{ channel.channel_id }}/videos">{{ channel.title }}</a></h3>
                 <p class="channel-id">{{ channel.channel_id }}</p>
                 <p class="channel-source">Source: {{ channel.source_input }}</p>
             </div>
         </div>
-        
         <div class="channel-actions">
-            <form method="post" action="/admin/channels/{{ channel.channel_id }}/scan" style="display: inline;">
+            <form method="post" action="/admin/channels/{{ channel.channel_id }}/scan" class="inline-form">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                <button type="submit" class="btn btn-scan" onclick="return confirmScan('{{ channel.title }}')">
-                    Scan Now
+                <button type="submit" class="btn btn-secondary btn-sm scan-btn" data-channel-id="{{ channel.channel_id }}">
+                    <span class="btn-text">Scan</span>
+                    <span class="btn-loading" style="display: none;">
+                        <span class="spinner"></span> Scanning...
+                    </span>
                 </button>
             </form>
-            
-            <form method="post" action="/admin/channels/{{ channel.channel_id }}/delete" style="display: inline;">
+            <form method="post" action="/admin/channels/{{ channel.channel_id }}/delete" class="inline-form">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                <button type="submit" class="btn btn-danger" onclick="return confirmDelete('{{ channel.title }}')">
-                    Delete
-                </button>
+                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this channel?')">Delete</button>
             </form>
-        </div>
-        
-        <div class="channel-stats">
-            <span class="stat">Added: {{ channel.added_at.strftime('%Y-%m-%d') }}</span>
-            <span class="stat">Updated: {{ channel.updated_at.strftime('%Y-%m-%d') }}</span>
         </div>
     </div>
     {% endfor %}
 </div>
 
-{% if not channels %}
+<!-- Pagination (bottom) -->
+{% if total_pages > 1 %}
+<div class="pagination-wrapper">
+    <nav class="pagination">
+        {% if has_prev %}
+        <a href="?page={{ prev_page }}{% if search %}&search={{ search }}{% endif %}" class="pagination-link">← Previous</a>
+        {% endif %}
+        
+        <span class="pagination-info">Page {{ current_page }} of {{ total_pages }}</span>
+        
+        {% if has_next %}
+        <a href="?page={{ next_page }}{% if search %}&search={{ search }}{% endif %}" class="pagination-link">Next →</a>
+        {% endif %}
+    </nav>
+</div>
+{% endif %}
+{% else %}
 <div class="empty-state">
-    <h3>No channels added yet</h3>
-    <p>Click "Add Channel" to start monitoring YouTube channels.</p>
+    <div class="empty-state-icon">📺</div>
+    <h3 class="empty-state-title">No channels yet</h3>
+    <p class="empty-state-description">
+        Start monitoring YouTube channels by adding your first channel below.
+        You can add up to 10 channels to track video availability.
+    </p>
+    <button class="btn btn-primary" onclick="showAddChannelForm()">Add Your First Channel</button>
 </div>
 {% endif %}
 {% endblock %}

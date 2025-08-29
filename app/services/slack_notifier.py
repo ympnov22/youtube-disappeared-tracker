@@ -18,10 +18,47 @@ class SlackNotifier:
         self.webhook_url = webhook_url or os.getenv("SLACK_WEBHOOK_URL")
         self.enabled = bool(self.webhook_url)
 
+        self.notification_language = os.getenv("SLACK_NOTIFICATION_LANGUAGE", "en")
+        self.min_severity_threshold = os.getenv("SLACK_MIN_SEVERITY", "LOW")
+        self.renotification_hours = int(os.getenv("SLACK_RENOTIFICATION_HOURS", "24"))
+        self.max_notifications_per_video = int(
+            os.getenv("SLACK_MAX_NOTIFICATIONS_PER_VIDEO", "3")
+        )
+
         if not self.enabled:
             logger.info(
                 "Slack notifications disabled: SLACK_WEBHOOK_URL not configured"
             )
+
+    def _get_event_severity(self, event_type: str) -> str:
+        """Get severity level for event type."""
+        severity_map = {
+            "DELETED": "HIGH",
+            "PRIVATE": "MEDIUM",
+            "GEO_BLOCKED": "LOW",
+            "AGE_RESTRICTED": "LOW",
+            "UNKNOWN": "MEDIUM",
+        }
+        return severity_map.get(event_type, "MEDIUM")
+
+    def _should_send_notification(
+        self, event: DisappearanceEvent, video: Video
+    ) -> bool:
+        """Check if notification should be sent based on thresholds and rules."""
+        event_severity = self._get_event_severity(event.event_type.value)
+        severity_levels = {"LOW": 1, "MEDIUM": 2, "HIGH": 3}
+
+        min_level = severity_levels.get(self.min_severity_threshold, 1)
+        event_level = severity_levels.get(event_severity, 2)
+
+        if event_level < min_level:
+            logger.debug(
+                f"Skipping notification: severity {event_severity} "
+                f"below threshold {self.min_severity_threshold}"
+            )
+            return False
+
+        return True
 
     async def send_disappearance_alert(
         self,
@@ -44,8 +81,13 @@ class SlackNotifier:
             logger.debug("Slack notification skipped: not enabled")
             return False
 
+        if not self._should_send_notification(event, video):
+            return False
+
         try:
-            message = self._format_message(event, video, channel)
+            message = self._format_message(
+                event, video, channel, self.notification_language
+            )
             success = await self._send_webhook(message)
 
             if success:
@@ -56,6 +98,8 @@ class SlackNotifier:
                         "channel_id": channel.channel_id,
                         "event_type": event.event_type.value,
                         "detected_at": event.detected_at.isoformat(),
+                        "language": self.notification_language,
+                        "severity": self._get_event_severity(event.event_type.value),
                     },
                 )
             else:
@@ -87,8 +131,9 @@ class SlackNotifier:
         event: DisappearanceEvent,
         video: Video,
         channel: Channel,
+        language: str = "en",
     ) -> dict:
-        """Format the Slack message payload."""
+        """Format the Slack message payload with bilingual support."""
         event_type_emoji = {
             "PRIVATE": "🔒",
             "DELETED": "🗑️",
@@ -97,49 +142,88 @@ class SlackNotifier:
             "UNKNOWN": "❓",
         }
 
+        severity_icons = {
+            "DELETED": "🚨",
+            "PRIVATE": "⚠️",
+            "GEO_BLOCKED": "ℹ️",
+            "AGE_RESTRICTED": "ℹ️",
+            "UNKNOWN": "❓",
+        }
+
         emoji = event_type_emoji.get(event.event_type.value, "❓")
-        event_type_display = event.event_type.value.replace("_", " ").title()
+        severity = severity_icons.get(event.event_type.value, "❓")
+
+        if language == "ja":
+            event_type_display = {
+                "PRIVATE": "非公開",
+                "DELETED": "削除済み",
+                "GEO_BLOCKED": "地域制限",
+                "AGE_RESTRICTED": "年齢制限",
+                "UNKNOWN": "不明",
+            }.get(event.event_type.value, "不明")
+            header_text = f"{severity}{emoji} 動画が消失しました: {event_type_display}"
+            button_text = "YouTubeで確認"
+            fields = [
+                {"type": "mrkdwn", "text": f"*チャンネル:*\n{channel.title}"},
+                {"type": "mrkdwn", "text": f"*動画ID:*\n`{video.video_id}`"},
+                {
+                    "type": "mrkdwn",
+                    "text": (
+                        f"*検出日時:*\n"
+                        f"{event.detected_at.strftime('%Y-%m-%d %H:%M:%S UTC')}"
+                    ),
+                },
+                {"type": "mrkdwn", "text": f"*イベント種別:*\n{event_type_display}"},
+            ]
+            title_prefix = "*動画タイトル:*\n"
+        else:
+            event_type_display = event.event_type.value.replace("_", " ").title()
+            header_text = f"{severity}{emoji} Video Disappeared: {event_type_display}"
+            button_text = "Check on YouTube"
+            fields = [
+                {"type": "mrkdwn", "text": f"*Channel:*\n{channel.title}"},
+                {"type": "mrkdwn", "text": f"*Video ID:*\n`{video.video_id}`"},
+                {
+                    "type": "mrkdwn",
+                    "text": (
+                        f"*Detected:*\n"
+                        f"{event.detected_at.strftime('%Y-%m-%d %H:%M:%S UTC')}"
+                    ),
+                },
+                {"type": "mrkdwn", "text": f"*Event Type:*\n{event_type_display}"},
+            ]
+            title_prefix = "*Video Title:*\n"
 
         title = str(video.title) if video.title else ""
         if len(title) > 100:
             title = title[:97] + "..."
 
-        detected_time = event.detected_at.strftime("%Y-%m-%d %H:%M:%S UTC")
-
         youtube_url = f"https://www.youtube.com/watch?v={video.video_id}"
 
         message = {
-            "text": f"{emoji} Video Disappeared: {event_type_display}",
+            "text": header_text,
             "blocks": [
                 {
                     "type": "header",
                     "text": {
                         "type": "plain_text",
-                        "text": f"{emoji} Video Disappeared: {event_type_display}",
+                        "text": header_text,
                     },
                 },
                 {
                     "type": "section",
-                    "fields": [
-                        {"type": "mrkdwn", "text": f"*Channel:*\n{channel.title}"},
-                        {"type": "mrkdwn", "text": f"*Video ID:*\n`{video.video_id}`"},
-                        {"type": "mrkdwn", "text": f"*Detected:*\n{detected_time}"},
-                        {
-                            "type": "mrkdwn",
-                            "text": f"*Event Type:*\n{event_type_display}",
-                        },
-                    ],
+                    "fields": fields,
                 },
                 {
                     "type": "section",
-                    "text": {"type": "mrkdwn", "text": f"*Video Title:*\n{title}"},
+                    "text": {"type": "mrkdwn", "text": f"{title_prefix}{title}"},
                 },
                 {
                     "type": "actions",
                     "elements": [
                         {
                             "type": "button",
-                            "text": {"type": "plain_text", "text": "Check on YouTube"},
+                            "text": {"type": "plain_text", "text": button_text},
                             "url": youtube_url,
                             "style": "primary",
                         }
@@ -150,15 +234,20 @@ class SlackNotifier:
 
         if event.details:
             context_items = []
-
-            if "view_count" in event.details:
-                context_items.append(f"Views: {event.details['view_count']:,}")
-
-            if "duration" in event.details:
-                context_items.append(f"Duration: {event.details['duration']}")
-
-            if "published_at" in event.details:
-                context_items.append(f"Published: {event.details['published_at']}")
+            if language == "ja":
+                if "view_count" in event.details:
+                    context_items.append(f"再生回数: {event.details['view_count']:,}")
+                if "duration" in event.details:
+                    context_items.append(f"長さ: {event.details['duration']}")
+                if "published_at" in event.details:
+                    context_items.append(f"公開日: {event.details['published_at']}")
+            else:
+                if "view_count" in event.details:
+                    context_items.append(f"Views: {event.details['view_count']:,}")
+                if "duration" in event.details:
+                    context_items.append(f"Duration: {event.details['duration']}")
+                if "published_at" in event.details:
+                    context_items.append(f"Published: {event.details['published_at']}")
 
             if context_items:
                 blocks = list(message.get("blocks", []))

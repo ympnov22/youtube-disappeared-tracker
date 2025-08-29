@@ -1,0 +1,89 @@
+name: Release and Deploy
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: youtube_tracker_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install poetry
+        poetry install
+    
+    - name: Run tests
+      env:
+        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/youtube_tracker_test
+        REDIS_URL: redis://localhost:6379/0
+        APP_SECRET_KEY: test-secret-key
+        SESSION_SECRET: test-session-secret
+      run: |
+        poetry run pytest --cov=app --cov-report=xml --cov-fail-under=85
+    
+    - name: Build Docker image
+      run: |
+        docker build -t youtube-tracker:${{ github.ref_name }} .
+    
+    - name: Deploy to Fly.io
+      uses: superfly/flyctl-actions/setup-flyctl@master
+    
+    - name: Deploy
+      run: |
+        flyctl deploy --image youtube-tracker:${{ github.ref_name }} --app youtube-tracker
+      env:
+        FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+    
+    - name: Create GitHub Release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ github.ref }}
+        body: |
+          ## Changes in this Release
+          - Automated release from tag ${{ github.ref_name }}
+          - Deployed to production on Fly.io
+          
+          ## Deployment Info
+          - **App**: youtube-tracker
+          - **Region**: nrt (Tokyo)
+          - **Image**: youtube-tracker:${{ github.ref_name }}
+        draft: false
+        prerelease: false

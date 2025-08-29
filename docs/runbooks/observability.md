@@ -107,6 +107,42 @@ redis-cli info memory
 - **Threshold**: Alert if Slack notification failure rate > 20% over 1 hour
 - **Test Notifications**: Use `/admin/test-slack` endpoint for verification
 
+#### Advanced Slack Configuration
+
+**Environment Variables**:
+- `SLACK_NOTIFICATION_LANGUAGE`: Language for notifications (`en` or `ja`, default: `en`)
+- `SLACK_MIN_SEVERITY`: Minimum severity threshold (`LOW`, `MEDIUM`, `HIGH`, default: `LOW`)
+- `SLACK_RENOTIFICATION_HOURS`: Hours between re-notifications for same video (default: `24`)
+- `SLACK_MAX_NOTIFICATIONS_PER_VIDEO`: Maximum notifications per video (default: `3`)
+
+**Severity Levels**:
+- **HIGH**: DELETED events (🚨 immediate attention required)
+- **MEDIUM**: PRIVATE, UNKNOWN events (⚠️ monitor and investigate)
+- **LOW**: GEO_BLOCKED, AGE_RESTRICTED events (ℹ️ informational)
+
+**Bilingual Support**:
+- **English**: Default notification language with standard terminology
+- **Japanese**: Full translation including event types, field labels, and button text
+- **Language Detection**: Automatically uses configured language for all notifications
+
+**Threshold Configuration Examples**:
+```bash
+# Only send high-severity alerts (DELETED videos only)
+SLACK_MIN_SEVERITY=HIGH
+
+# Send all alerts in Japanese
+SLACK_NOTIFICATION_LANGUAGE=ja
+
+# Reduce notification frequency (48 hours between re-notifications)
+SLACK_RENOTIFICATION_HOURS=48
+```
+
+**Re-notification Rules**:
+- Same video disappearance events respect `SLACK_RENOTIFICATION_HOURS` interval
+- Maximum `SLACK_MAX_NOTIFICATIONS_PER_VIDEO` notifications per video lifetime
+- Different event types for same video count as separate notification chains
+- Manual channel scans bypass re-notification throttling
+
 ### Critical Alerts (Immediate Response Required)
 
 1. **Application Down**

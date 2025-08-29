@@ -716,8 +716,133 @@ fly deploy --app youtube-tracker-prod
 - Plan for increased API calls
 - Consider CDN requirements for static assets
 
+## Release Management
+
+### Release Tagging Workflow
+
+**English**: Production deployments are triggered by Git tags following semantic versioning.
+
+**Japanese**: 本番デプロイメントは、セマンティックバージョニングに従うGitタグによってトリガーされます。
+
+#### Creating a Release
+
+1. **Prepare Release**:
+   ```bash
+   # Ensure all tests pass
+   make test
+   make lint
+   
+   # Update CHANGELOG.md with release notes
+   # Commit all changes
+   git add .
+   git commit -m "chore: prepare release v1.2.3"
+   ```
+
+2. **Create and Push Tag**:
+   ```bash
+   # Create annotated tag
+   git tag -a v1.2.3 -m "Release v1.2.3: Phase 5 hardening and UX improvements"
+   
+   # Push tag to trigger deployment
+   git push origin v1.2.3
+   ```
+
+3. **Monitor Deployment**:
+   ```bash
+   # Watch GitHub Actions
+   gh run watch
+   
+   # Check Fly.io deployment status
+   make status
+   
+   # Verify health
+   make health
+   ```
+
+### Rollback Procedures
+
+#### Automatic Rollback (Recommended)
+
+```bash
+# Rollback to previous version
+make rollback
+
+# Rollback to specific version
+make rollback-to VERSION=123
+
+# List available versions
+make list-releases
+```
+
+#### Manual Rollback
+
+```bash
+# List releases
+flyctl releases --app youtube-tracker
+
+# Rollback to specific release
+flyctl releases rollback --app youtube-tracker --version 123
+
+# Verify rollback
+flyctl status --app youtube-tracker
+```
+
+#### Rollback Verification
+
+1. **Health Check**: `make health`
+2. **Functionality Test**: Test critical user flows
+3. **Log Monitoring**: `make logs` for 5-10 minutes
+4. **Slack Notifications**: Verify alerts are working
+
+### Emergency Procedures
+
+#### Application Down
+
+1. **Immediate Response**:
+   ```bash
+   # Check status
+   make status
+   
+   # View recent logs
+   make logs
+   
+   # Restart if needed
+   flyctl restart --app youtube-tracker
+   ```
+
+2. **If Restart Fails**: `make rollback`
+
+3. **If Rollback Fails**: Contact Fly.io support
+
+#### Database Issues
+
+1. **Check Database Status**:
+   ```bash
+   flyctl postgres list
+   flyctl postgres status --app youtube-tracker-db
+   ```
+
+2. **Connection Issues**: Verify `DATABASE_URL` secret
+
+3. **Performance Issues**: Check slow query logs
+
+#### High Resource Usage
+
+1. **Scale Up Temporarily**:
+   ```bash
+   # Increase memory
+   flyctl scale memory 1024 --app youtube-tracker
+   
+   # Add more machines
+   flyctl scale count 2 --app youtube-tracker
+   ```
+
+2. **Monitor and Investigate**: Use logs and metrics to identify cause
+
+3. **Scale Down**: After issue resolution
+
 ---
 
-**Last Updated**: August 28, 2025
-**Version**: 1.0.0
-**Next Review**: September 28, 2025
+**Last Updated**: August 29, 2025
+**Version**: 1.1.0
+**Next Review**: September 29, 2025
