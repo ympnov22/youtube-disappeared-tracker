@@ -13,7 +13,7 @@ from app.models.channel import Channel
 from app.models.disappearance_event import DisappearanceEvent, EventType
 from app.models.video import Video
 
-SQLALCHEMY_DATABASE_URL = "sqlite:///./test_videos_api.db"
+SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL,
     connect_args={"check_same_thread": False},
@@ -32,27 +32,34 @@ def override_get_db() -> Generator[Session, None, None]:
         db.close()
 
 
-app.dependency_overrides[get_db] = override_get_db
 client = TestClient(app)
 
 
 class TestVideosAPI:
     def setup_method(self) -> None:
-        db = TestingSessionLocal()
-        db.query(Video).delete()
-        db.query(DisappearanceEvent).delete()
-        db.query(Channel).delete()
-        db.commit()
+        app.dependency_overrides[get_db] = override_get_db
 
-        self.channel = Channel(
-            channel_id="UCtest123",
-            title="Test Channel",
-            uploads_playlist_id="UUtest123",
-            source_input="@testchannel",
-        )
-        db.add(self.channel)
-        db.commit()
-        db.close()
+        Base.metadata.drop_all(bind=engine)
+        Base.metadata.create_all(bind=engine)
+
+        db = TestingSessionLocal()
+        try:
+            self.channel = Channel(
+                channel_id="UCtest123",
+                title="Test Channel",
+                uploads_playlist_id="UUtest123",
+                source_input="@testchannel",
+                is_active=True,
+            )
+            db.add(self.channel)
+            db.commit()
+            db.refresh(self.channel)
+        finally:
+            db.close()
+
+    def teardown_method(self) -> None:
+        if get_db in app.dependency_overrides:
+            del app.dependency_overrides[get_db]
 
     @patch("app.api.videos.YouTubeClient")
     @patch("app.api.videos.VideoIngestionService")
