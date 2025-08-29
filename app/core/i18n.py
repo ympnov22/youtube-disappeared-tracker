@@ -4,7 +4,7 @@ Provides bilingual support for English and Japanese.
 """
 
 import os
-from typing import Dict
+from typing import Any, Dict
 
 
 class I18n:
@@ -115,7 +115,7 @@ class I18n:
         """Get current language."""
         return self.current_language
 
-    def t(self, key: str, **kwargs) -> str:
+    def t(self, key: str, **kwargs: Any) -> str:
         """Translate a key to current language with optional formatting."""
         translations = self.translations.get(self.current_language, {})
         text = translations.get(key, key)
