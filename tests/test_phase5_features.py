@@ -83,6 +83,7 @@ class TestYouTubeClientRetry:
     """Test YouTube API retry and backoff mechanisms."""
 
     @patch("app.services.youtube_client.time.sleep")
+    @patch.dict(os.environ, {"YOUTUBE_API_KEY": "test-api-key"})
     def test_retry_on_rate_limit(self, mock_sleep):
         """Test retry behavior on rate limit (429) errors."""
         client = YouTubeClient()
@@ -100,6 +101,7 @@ class TestYouTubeClientRetry:
         assert mock_request.execute.call_count == 3
         assert mock_sleep.call_count == 2
 
+    @patch.dict(os.environ, {"YOUTUBE_API_KEY": "test-api-key"})
     def test_quota_exhausted_exception(self):
         """Test quota exhausted error handling."""
         client = YouTubeClient()
@@ -118,7 +120,11 @@ class TestYouTubeClientRetry:
         """Test exponential backoff timing calculation."""
         with patch.dict(
             os.environ,
-            {"YOUTUBE_API_BASE_DELAY": "1.0", "YOUTUBE_API_BACKOFF_MULTIPLIER": "2.0"},
+            {
+                "YOUTUBE_API_KEY": "test-api-key",
+                "YOUTUBE_API_BASE_DELAY": "1.0",
+                "YOUTUBE_API_BACKOFF_MULTIPLIER": "2.0",
+            },
         ):
             client = YouTubeClient()
 
