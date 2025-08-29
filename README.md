@@ -14,7 +14,7 @@ This application monitors subscribed YouTube channels for video changes, storing
 - Simple web UI with dashboard and channel timeline
 - CSV export functionality
 - Optional notifications (Slack/email) for daily missing video summaries
-- Deploy on Fly.io (Tokyo region)
+- Deploy on Render (free tier)
 
 ## Project Structure
 
@@ -83,67 +83,42 @@ poetry run flake8 .
 poetry run mypy app
 ```
 
-## Fly.io Deployment Configuration
+## Deploy to Render
 
-### Core Parameters
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/ympnov22/youtube-disappeared-tracker)
 
-| Parameter | Value | Description |
-|-----------|-------|-------------|
-| `app` | `youtube-tracker` | Application name on Fly.io |
-| `primary_region` | `nrt` | Tokyo region for low latency to Japanese users |
-| `cpu_kind` | `shared` | Shared CPU for cost optimization |
-| `cpus` | `1` | Single CPU core |
-| `memory_mb` | `512` | 512MB RAM allocation |
-| `internal_port` | `8080` | Application port inside container |
+### Quick Deploy
 
-### Scaling Configuration
+1. Click the "Deploy to Render" button above
+2. Set the required environment variables:
+   - `SLACK_WEBHOOK_URL`: Your Slack webhook URL for notifications (optional)
+   - `YOUTUBE_API_KEY`: YouTube Data API v3 key (required)
+   - `REDIS_URL`: Redis connection URL (provided by Render)
+   - `ENV`: Set to `production`
 
-| Parameter | Value | Description |
-|-----------|-------|-------------|
-| `auto_stop_machines` | `true` | Stop machines when idle to save costs |
-| `auto_start_machines` | `true` | Start machines on incoming requests |
-| `min_machines_running` | `0` | No always-on machines (cost optimization) |
-| `max_machines_running` | `3` | Maximum 3 machines for high traffic |
-| `hard_limit` | `25` | Maximum concurrent connections per machine |
-| `soft_limit` | `20` | Soft limit for connection handling |
+### Health Check Endpoints
 
-### Health Check Configuration
-
-| Parameter | Value | Description |
-|-----------|-------|-------------|
-| `grace_period` | `10s` | Time to wait before first health check |
-| `interval` | `30s` | Health check frequency |
-| `timeout` | `10s` | Health check timeout |
-| `path` | `/healthz` | Health check endpoint |
+The application provides health check endpoints for monitoring:
+- `/health`: Basic health status
+- `/ready`: Readiness check (may return 404 if not implemented)
 
 ### Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `APP_ENV` | `production` | Application environment |
-| `SCAN_ENABLED` | `false` | Background scanning (disabled by default) |
-| `SLACK_MIN_SEVERITY` | `MEDIUM` | Minimum alert severity |
-| `SLACK_NOTIFICATION_LANGUAGE` | `en` | Notification language (en/ja) |
-| `SLACK_RENOTIFICATION_HOURS` | `24` | Hours between re-notifications |
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `YOUTUBE_API_KEY` | Yes | YouTube Data API v3 access key |
+| `SLACK_WEBHOOK_URL` | No | Slack webhook for notifications |
+| `REDIS_URL` | Yes | Redis connection URL (auto-provided by Render) |
+| `ENV` | Yes | Set to `production` for production deployment |
 
-### Deployment Commands
+### Render Configuration
 
-```bash
-# Deploy application
-make deploy
-
-# Rollback to previous version
-make rollback
-
-# Rollback to specific version
-make rollback-to VERSION=123
-
-# Check deployment status
-make status
-
-# View logs
-make logs
-```
+The application is configured via `render.yaml` with:
+- **Service Type**: Web service
+- **Plan**: Free tier
+- **Health Check**: `/health` endpoint
+- **Auto Deploy**: Enabled for main branch
+- **Port**: Automatically configured via `$PORT` environment variable
 
 This project follows a phased development approach with clear milestones and documentation requirements.
 
