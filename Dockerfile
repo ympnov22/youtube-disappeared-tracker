@@ -1,25 +1,10 @@
 FROM python:3.11-slim
 
 WORKDIR /app
+COPY pyproject.toml poetry.lock* requirements*.txt* /app/
+RUN pip install --no-cache-dir -U pip && \
+    if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    gcc \
-    postgresql-client \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install Poetry
-RUN pip install --no-cache-dir -U pip poetry
-
-# Copy Poetry files
-COPY pyproject.toml poetry.lock* /app/
-
-# Install dependencies
-RUN poetry config virtualenvs.create false && \
-    poetry install --no-interaction --no-ansi --only=main
-
-# Copy application code
 COPY . /app
 
 ENV PORT=8080
