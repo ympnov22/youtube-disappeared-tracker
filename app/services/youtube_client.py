@@ -1,4 +1,6 @@
+import logging
 import os
+import random
 import re
 import time
 from datetime import datetime
@@ -8,6 +10,20 @@ from urllib.parse import urlparse
 from googleapiclient.discovery import build  # type: ignore[import-untyped]
 from googleapiclient.errors import HttpError  # type: ignore[import-untyped]
 
+logger = logging.getLogger(__name__)
+
+
+class YouTubeAPIError(Exception):
+    """Custom exception for YouTube API errors."""
+
+    pass
+
+
+class YouTubeQuotaExhaustedError(YouTubeAPIError):
+    """Exception raised when YouTube API quota is exhausted."""
+
+    pass
+
 
 class YouTubeClient:
     def __init__(self) -> None:
@@ -16,6 +32,110 @@ class YouTubeClient:
             raise ValueError("YOUTUBE_API_KEY environment variable is required")
 
         self.youtube = build("youtube", "v3", developerKey=self.api_key)
+
+        self.max_retries = int(os.getenv("YOUTUBE_API_MAX_RETRIES", "3"))
+        self.base_delay = float(os.getenv("YOUTUBE_API_BASE_DELAY", "1.0"))
+        self.max_delay = float(os.getenv("YOUTUBE_API_MAX_DELAY", "60.0"))
+        self.backoff_multiplier = float(
+            os.getenv("YOUTUBE_API_BACKOFF_MULTIPLIER", "2.0")
+        )
+
+    def _execute_with_retry(
+        self, request, operation_name: str = "API call"
+    ):
+        """Execute YouTube API request with exponential backoff retry."""
+        last_exception = None
+
+        for attempt in range(self.max_retries + 1):
+            try:
+                if attempt > 0:
+                    delay = min(
+                        self.base_delay * (self.backoff_multiplier ** (attempt - 1)),
+                        self.max_delay,
+                    )
+                    jitter = random.uniform(0, delay * 0.1)
+                    total_delay = delay + jitter
+
+                    logger.info(
+                        f"Retrying {operation_name} "
+                        f"(attempt {attempt + 1}/{self.max_retries + 1}) "
+                        f"after {total_delay:.2f}s delay"
+                    )
+                    time.sleep(total_delay)
+
+                response = request.execute()
+
+                if attempt > 0:
+                    logger.info(
+                        f"Successfully completed {operation_name} "
+                        f"after {attempt} retries"
+                    )
+
+                return response
+
+            except HttpError as e:
+                last_exception = e
+                status_code = e.resp.status
+
+                if status_code == 403:
+                    error_details = (
+                        e.error_details if hasattr(e, "error_details") else []
+                    )
+                    quota_errors = [
+                        "quotaExceeded",
+                        "dailyLimitExceeded",
+                        "userRateLimitExceeded",
+                        "rateLimitExceeded",
+                    ]
+
+                    if any(
+                        error.get("reason") in quota_errors for error in error_details
+                    ):
+                        logger.error(f"YouTube API quota exhausted: {e}")
+                        raise YouTubeQuotaExhaustedError(
+                            f"YouTube API quota exhausted: {e}"
+                        )
+                    else:
+                        logger.error(f"YouTube API permission error: {e}")
+                        raise YouTubeAPIError(f"YouTube API permission error: {e}")
+
+                elif status_code == 429:
+                    logger.warning(
+                        f"YouTube API rate limit hit for {operation_name}, "
+                        f"attempt {attempt + 1}"
+                    )
+                    continue
+
+                elif status_code >= 500:
+                    logger.warning(
+                        f"YouTube API server error for {operation_name}: {e}, "
+                        f"attempt {attempt + 1}"
+                    )
+                    continue
+
+                else:
+                    logger.error(f"YouTube API client error for {operation_name}: {e}")
+                    raise YouTubeAPIError(f"YouTube API client error: {e}")
+
+            except Exception as e:
+                last_exception = e
+                logger.warning(
+                    f"Unexpected error in {operation_name}, attempt {attempt + 1}: {e}"
+                )
+                continue
+
+        logger.error(f"All retries exhausted for {operation_name}")
+        if isinstance(last_exception, HttpError):
+            if last_exception.resp.status == 403:
+                raise YouTubeQuotaExhaustedError(
+                    f"YouTube API quota exhausted after retries: {last_exception}"
+                )
+            else:
+                raise YouTubeAPIError(
+                    f"YouTube API error after retries: {last_exception}"
+                )
+        else:
+            raise YouTubeAPIError(f"Unexpected error after retries: {last_exception}")
 
     def resolve_channel_input(
         self, input_str: str
@@ -86,7 +206,7 @@ class YouTubeClient:
             request = self.youtube.channels().list(
                 part="snippet,statistics", forHandle=handle
             )
-            response = request.execute()
+            response = self._execute_with_retry(request, f"search by handle: {handle}")
 
             if response.get("items"):
                 channel = response["items"][0]
@@ -94,8 +214,10 @@ class YouTubeClient:
                 metadata = self._extract_metadata(channel)
                 return channel_id, metadata
 
-        except HttpError:
-            pass
+        except (YouTubeAPIError, YouTubeQuotaExhaustedError):
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error searching by handle {handle}: {e}")
 
         return None, None
 
@@ -107,7 +229,9 @@ class YouTubeClient:
             request = self.youtube.channels().list(
                 part="snippet,statistics", forUsername=username
             )
-            response = request.execute()
+            response = self._execute_with_retry(
+                request, f"search by username: {username}"
+            )
 
             if response.get("items"):
                 channel = response["items"][0]
@@ -115,8 +239,10 @@ class YouTubeClient:
                 metadata = self._extract_metadata(channel)
                 return channel_id, metadata
 
-        except HttpError:
-            pass
+        except (YouTubeAPIError, YouTubeQuotaExhaustedError):
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error searching by username {username}: {e}")
 
         return None, None
 
@@ -128,14 +254,20 @@ class YouTubeClient:
             request = self.youtube.search().list(
                 part="snippet", q=custom_name, type="channel", maxResults=1
             )
-            response = request.execute()
+            response = self._execute_with_retry(
+                request, f"search by custom name: {custom_name}"
+            )
 
             if response.get("items"):
                 channel_id = response["items"][0]["snippet"]["channelId"]
                 return self._get_channel_metadata(channel_id)
 
-        except HttpError:
-            pass
+        except (YouTubeAPIError, YouTubeQuotaExhaustedError):
+            raise
+        except Exception as e:
+            logger.error(
+                f"Unexpected error searching by custom name {custom_name}: {e}"
+            )
 
         return None, None
 
@@ -147,15 +279,19 @@ class YouTubeClient:
             request = self.youtube.channels().list(
                 part="snippet,statistics,contentDetails", id=channel_id
             )
-            response = request.execute()
+            response = self._execute_with_retry(
+                request, f"get channel metadata: {channel_id}"
+            )
 
             if response.get("items"):
                 channel = response["items"][0]
                 metadata = self._extract_metadata(channel)
                 return channel_id, metadata
 
-        except HttpError:
-            pass
+        except (YouTubeAPIError, YouTubeQuotaExhaustedError):
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error getting channel metadata {channel_id}: {e}")
 
         return None, None
 
@@ -204,9 +340,9 @@ class YouTubeClient:
                     pageToken=next_page_token,
                 )
 
-                time.sleep(0.1)
-
-                response = request.execute()
+                response = self._execute_with_retry(
+                    request, f"fetch playlist items: {uploads_playlist_id}"
+                )
                 items = response.get("items", [])
 
                 if not items:
@@ -230,9 +366,10 @@ class YouTubeClient:
                 if not next_page_token:
                     break
 
-        except HttpError as e:
-            if e.resp.status in [403, 429]:
-                raise
+        except (YouTubeAPIError, YouTubeQuotaExhaustedError):
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error fetching channel videos: {e}")
             return videos
 
         return videos
@@ -248,14 +385,17 @@ class YouTubeClient:
                 id=",".join(video_ids),
             )
 
-            time.sleep(0.1)
-
-            response = request.execute()
+            response = self._execute_with_retry(
+                request, f"get video details: {len(video_ids)} videos"
+            )
             items = response.get("items", [])
 
             return {item["id"]: item for item in items}
 
-        except HttpError:
+        except (YouTubeAPIError, YouTubeQuotaExhaustedError):
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error getting video details: {e}")
             return {}
 
     def _extract_video_metadata(

@@ -2,6 +2,8 @@
 
 app = "youtube-tracker"
 primary_region = "nrt"
+kill_signal = "SIGINT"
+kill_timeout = "5s"
 
 [build]
   dockerfile = "Dockerfile"
@@ -10,6 +12,11 @@ primary_region = "nrt"
   APP_ENV = "production"
   SCAN_ENABLED = "false"
   PORT = "8080"
+  # Slack notification defaults
+  SLACK_MIN_SEVERITY = "MEDIUM"
+  SLACK_NOTIFICATION_LANGUAGE = "en"
+  SLACK_RENOTIFICATION_HOURS = "24"
+  SLACK_MAX_NOTIFICATIONS_PER_VIDEO = "3"
 
 [http_service]
   internal_port = 8080
@@ -17,6 +24,7 @@ primary_region = "nrt"
   auto_stop_machines = true
   auto_start_machines = true
   min_machines_running = 0
+  max_machines_running = 3
   processes = ["app"]
 
   [http_service.concurrency]
@@ -25,13 +33,14 @@ primary_region = "nrt"
     soft_limit = 20
 
   [[http_service.checks]]
-    grace_period = "5s"
+    grace_period = "10s"
     interval = "30s"
     method = "GET"
     path = "/healthz"
     protocol = "http"
     timeout = "10s"
     tls_skip_verify = false
+    headers = {}
 
 [[vm]]
   cpu_kind = "shared"
@@ -40,7 +49,22 @@ primary_region = "nrt"
 
 [deploy]
   release_command = "alembic upgrade head"
+  strategy = "rolling"
 
 [[statics]]
   guest_path = "/app/web/static"
   url_prefix = "/static/"
+
+# Restart policy for resilience
+[restart]
+  policy = "on-failure"
+  max_restarts = 3
+
+# Resource limits
+[metrics]
+  port = 9091
+  path = "/metrics"
+
+# Backup configuration
+[backup]
+  schedule = "0 2 * * *"

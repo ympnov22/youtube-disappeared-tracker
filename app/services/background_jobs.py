@@ -1,5 +1,7 @@
 import logging
 import os
+import random
+import time
 from typing import Any, Optional
 
 from sqlalchemy.orm import Session
@@ -105,13 +107,99 @@ class BackgroundJobService:
         }
 
     def _acquire_lock(self, channel_id: str, timeout: int = 300) -> bool:
-        """Acquire a distributed lock for channel scanning."""
+        """
+        Acquire a distributed lock for channel scanning with enhanced contention handling.
+        """
         if not self.redis_client:
             return True
 
         lock_key = f"scan_lock:{channel_id}"
-        result = self.redis_client.set(lock_key, "1", nx=True, ex=timeout)
-        return bool(result)
+        lock_value = f"{os.getpid()}:{time.time()}"
+
+        max_attempts = 3
+        for attempt in range(max_attempts):
+            try:
+                result = self.redis_client.set(
+                    lock_key, lock_value, nx=True, ex=timeout
+                )
+
+                if result:
+                    logger.debug(
+                        f"Acquired lock for channel {channel_id} "
+                        f"(attempt {attempt + 1})"
+                    )
+                    return True
+
+                existing_lock = self.redis_client.get(lock_key)
+                if existing_lock:
+                    try:
+                        existing_value = existing_lock.decode("utf-8")
+                        _, lock_timestamp = existing_value.split(":", 1)
+                        lock_age = time.time() - float(lock_timestamp)
+
+                        if lock_age > timeout + 60:
+                            logger.warning(
+                                f"Detected stale lock for channel {channel_id} "
+                                f"(age: {lock_age:.1f}s), forcing release"
+                            )
+                            self._force_release_lock(channel_id, existing_value)
+                            continue
+                    except (ValueError, UnicodeDecodeError):
+                        logger.warning(
+                            f"Invalid lock format for channel {channel_id}, "
+                            "forcing release"
+                        )
+                        self.redis_client.delete(lock_key)
+                        continue
+
+                if attempt < max_attempts - 1:
+                    wait_time = (2**attempt) + random.uniform(0, 1)
+                    logger.debug(
+                        f"Lock acquisition failed for channel {channel_id}, "
+                        f"waiting {wait_time:.1f}s"
+                    )
+                    time.sleep(wait_time)
+
+            except Exception as e:
+                logger.error(f"Error acquiring lock for channel {channel_id}: {e}")
+                if attempt < max_attempts - 1:
+                    time.sleep(1)
+                    continue
+                return False
+
+        logger.info(
+            f"Could not acquire lock for channel {channel_id} "
+            f"after {max_attempts} attempts"
+        )
+        return False
+
+    def _force_release_lock(self, channel_id: str, expected_value: str) -> None:
+        """
+        Force release a lock if it matches expected value (prevents race conditions).
+        """
+        if not self.redis_client:
+            return
+
+        lock_key = f"scan_lock:{channel_id}"
+
+        lua_script = """
+        if redis.call("GET", KEYS[1]) == ARGV[1] then
+            return redis.call("DEL", KEYS[1])
+        else
+            return 0
+        end
+        """
+
+        try:
+            result = self.redis_client.eval(lua_script, 1, lock_key, expected_value)
+            if result:
+                logger.info(f"Force released stale lock for channel {channel_id}")
+            else:
+                logger.debug(
+                    f"Lock for channel {channel_id} was already released or changed"
+                )
+        except Exception as e:
+            logger.error(f"Error force releasing lock for channel {channel_id}: {e}")
 
     def _release_lock(self, channel_id: str) -> None:
         """Release the distributed lock for channel scanning."""
@@ -119,7 +207,31 @@ class BackgroundJobService:
             return
 
         lock_key = f"scan_lock:{channel_id}"
-        self.redis_client.delete(lock_key)
+        lock_value = f"{os.getpid()}:{time.time()}"
+
+        lua_script = """
+        local current = redis.call("GET", KEYS[1])
+        if current then
+            local current_pid = string.match(current, "^(%d+):")
+            local expected_pid = string.match(ARGV[1], "^(%d+):")
+            if current_pid == expected_pid then
+                return redis.call("DEL", KEYS[1])
+            end
+        end
+        return 0
+        """
+
+        try:
+            result = self.redis_client.eval(lua_script, 1, lock_key, lock_value)
+            if result:
+                logger.debug(f"Released lock for channel {channel_id}")
+            else:
+                logger.warning(
+                    f"Could not release lock for channel {channel_id} "
+                    "(may have been released by another process)"
+                )
+        except Exception as e:
+            logger.error(f"Error releasing lock for channel {channel_id}: {e}")
 
     def _scan_all_channels(self) -> None:
         """Scan all active channels for video updates."""

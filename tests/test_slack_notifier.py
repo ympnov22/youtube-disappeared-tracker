@@ -55,9 +55,9 @@ class TestSlackNotifier:
 
         message = notifier._format_message(event, video, channel)
 
-        assert message["text"] == "🗑️ Video Disappeared: Deleted"
+        assert message["text"] == "🚨🗑️ Video Disappeared: Deleted"
         assert len(message["blocks"]) >= 4
-        assert message["blocks"][0]["text"]["text"] == "🗑️ Video Disappeared: Deleted"
+        assert message["blocks"][0]["text"]["text"] == "🚨🗑️ Video Disappeared: Deleted"
 
         fields = message["blocks"][1]["fields"]
         channel_field = next(f for f in fields if "Channel" in f["text"])

@@ -136,12 +136,14 @@ class TestBackgroundJobService:
 
             result = service._acquire_lock("UCtest123", 300)
             assert result is True
-            mock_redis_client.set.assert_called_with(
-                "scan_lock:UCtest123", "1", nx=True, ex=300
-            )
+            mock_redis_client.set.assert_called_once()
+            call_args = mock_redis_client.set.call_args
+            assert call_args[0][0] == "scan_lock:UCtest123"
+            assert ":" in call_args[0][1]  # Should contain PID:timestamp format
+            assert call_args[1] == {"nx": True, "ex": 300}
 
             service._release_lock("UCtest123")
-            mock_redis_client.delete.assert_called_with("scan_lock:UCtest123")
+            mock_redis_client.eval.assert_called_once()
 
     def test_scan_single_channel(self):
         mock_ingestion_service = Mock()

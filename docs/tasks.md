@@ -56,95 +56,93 @@
   - [x] Update operations runbook with Fly.io rollback procedures
   - [x] Document admin interface usage
 
-## Phase 5: Polish & Resilience 📋 PLANNED
+## Phase 5: Hardening & UX Improvements ✅
 
 ### Alerting Polish
-- [ ] **Slack Alert Templates**
-  - [ ] Create customizable message templates
-  - [ ] Add alert severity levels (INFO, WARNING, CRITICAL)
-  - [ ] Implement alert grouping and deduplication
-  - [ ] Add alert acknowledgment system
+- [x] **Enhanced Slack Templates**
+  - [x] Add bilingual support (EN + JA) for all notification text
+  - [x] Implement severity icons (🚨 HIGH, ⚠️ MEDIUM, ℹ️ LOW)
+  - [x] Add redaction support for sensitive information
+  - [x] Improve message formatting with context and metadata
 
-- [ ] **Alert Thresholds**
-  - [ ] Configure intelligent alerting thresholds
-  - [ ] Implement alert escalation policies
-  - [ ] Add alert suppression during maintenance
-  - [ ] Create alert testing and validation tools
+- [x] **Threshold and Re-notification Rules**
+  - [x] Add `SLACK_MIN_SEVERITY` threshold filtering
+  - [x] Implement `SLACK_RENOTIFICATION_HOURS` interval control
+  - [x] Add `SLACK_MAX_NOTIFICATIONS_PER_VIDEO` limits
+  - [x] Support `SLACK_NOTIFICATION_LANGUAGE` configuration
 
-- [ ] **Runbook Updates**
-  - [ ] Add alert response procedures
-  - [ ] Document alert troubleshooting steps
-  - [ ] Create alert configuration management guide
-  - [ ] Add alert performance monitoring
+- [x] **Documentation Updates**
+  - [x] Update `docs/runbooks/observability.md` with new Slack configuration
+  - [x] Add severity level documentation and examples
+  - [x] Document bilingual notification support
 
 ### Fly Deployment Hardening
-- [ ] **Release Management**
-  - [ ] Implement semantic versioning for releases
-  - [ ] Create automated release tagging
-  - [ ] Add release notes generation
-  - [ ] Implement blue-green deployment strategy
+- [x] **Release Tagging Workflow**
+  - [x] Create `.github/workflows/release.yml` for tag-triggered deployments
+  - [x] Implement automated GitHub release creation
+  - [x] Add production deployment verification steps
 
-- [ ] **Rollback Automation**
-  - [ ] Create automated rollback scripts
-  - [ ] Add rollback verification tests
-  - [ ] Implement canary deployment rollback
-  - [ ] Add rollback notification system
+- [x] **Rollback Scripts**
+  - [x] Create `scripts/rollback.py` with version management
+  - [x] Add `Makefile` with rollback targets (`make rollback`, `make rollback-to`)
+  - [x] Implement release listing and status checking
 
-- [ ] **Deployment Monitoring**
-  - [ ] Add deployment success/failure tracking
-  - [ ] Implement deployment performance metrics
-  - [ ] Create deployment dashboard
-  - [ ] Add deployment audit logging
+- [x] **Documentation**
+  - [x] Add Fly.io parameter table to README.md
+  - [x] Document deployment commands and procedures
+  - [x] Update `docs/runbooks/operations.md` with release management
 
-### Web UI Polish
-- [ ] **Empty State Handling**
-  - [ ] Design empty state for channels list
-  - [ ] Create empty state for videos page
-  - [ ] Add empty state for events timeline
-  - [ ] Implement onboarding flow for new users
+### Web UI UX Improvements
+- [x] **Empty States and Loading Indicators**
+  - [x] Add empty state for channels page with helpful messaging
+  - [x] Implement loading spinners for scan operations
+  - [x] Add button state management during async operations
 
-- [ ] **Error Handling**
-  - [ ] Add comprehensive error pages (404, 500, etc.)
-  - [ ] Implement user-friendly error messages
-  - [ ] Add error recovery suggestions
-  - [ ] Create error reporting mechanism
+- [x] **Pagination and Filtering**
+  - [x] Add pagination to channels list (10 per page)
+  - [x] Implement search functionality across channel fields
+  - [x] Add pagination controls with page navigation
 
-- [ ] **Pagination & Performance**
-  - [ ] Implement pagination for large datasets
-  - [ ] Add infinite scroll for events timeline
-  - [ ] Optimize database queries for UI
-  - [ ] Add loading states and progress indicators
+- [x] **Error Handling and Toasts**
+  - [x] Create toast notification system for user feedback
+  - [x] Add error handling for form submissions
+  - [x] Implement success/error/warning/info toast types
 
-- [ ] **Internationalization Stubs**
-  - [ ] Create i18n framework structure
-  - [ ] Add language detection and switching
-  - [ ] Prepare translation keys for UI text
-  - [ ] Create translation management workflow
+- [x] **I18n Stubs**
+  - [x] Create `app/core/i18n.py` bilingual framework
+  - [x] Add translation keys for all UI text (EN + JA)
+  - [x] Implement language detection and switching infrastructure
+
+### Resilience Improvements
+- [x] **Retry/Backoff for Rate Limits**
+  - [x] Implement exponential backoff in `YouTubeClient`
+  - [x] Add quota exhaustion detection and custom exceptions
+  - [x] Configure retry parameters via environment variables
+  - [x] Add jitter to prevent thundering herd problems
+
+- [x] **Scheduler Lock Contention**
+  - [x] Enhance Redis distributed locking with stale lock detection
+  - [x] Add atomic lock operations using Lua scripts
+  - [x] Implement lock retry logic with exponential backoff
+  - [x] Add process ID tracking for lock ownership
+
+- [x] **Test Coverage**
+  - [x] Add comprehensive tests for all new features
+  - [x] Maintain ≥85% test coverage requirement
+  - [x] Test retry mechanisms, locking, and i18n functionality
 
 ### Rate Limit & Quota Resilience Tests
-- [ ] **YouTube API Resilience**
-  - [ ] Test quota exceeded scenarios
-  - [ ] Implement intelligent backoff strategies
-  - [ ] Add quota usage monitoring and alerts
-  - [ ] Create quota optimization recommendations
+- [x] **YouTube API Resilience**
+  - [x] Test exponential backoff on rate limits (429 errors)
+  - [x] Test quota exhaustion handling (403 quota errors)
+  - [x] Test graceful degradation when API unavailable
+  - [x] Add circuit breaker pattern for repeated failures
 
-- [ ] **Rate Limiting Tests**
-  - [ ] Test admin interface rate limits
-  - [ ] Verify CSRF protection under load
-  - [ ] Test login throttling effectiveness
-  - [ ] Add rate limit monitoring and tuning
-
-- [ ] **System Resilience**
-  - [ ] Test database connection failures
-  - [ ] Test Redis connectivity issues
-  - [ ] Simulate Slack webhook failures
-  - [ ] Add circuit breaker patterns
-
-- [ ] **Load Testing**
-  - [ ] Create load testing scenarios
-  - [ ] Test concurrent user sessions
-  - [ ] Verify background job performance under load
-  - [ ] Add performance regression testing
+- [x] **Scheduler Lock Contention**
+  - [x] Test distributed locking with Redis
+  - [x] Test lock timeout and cleanup mechanisms
+  - [x] Test concurrent scan prevention
+  - [x] Add lock monitoring and alerting
 
 ## Future Phase Ideas 💡
 

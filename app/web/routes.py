@@ -40,13 +40,31 @@ async def admin_dashboard(
 @router.get("/admin/channels")
 async def admin_channels(
     request: Request,
+    page: int = 1,
+    search: str = "",
     db: Session = Depends(get_db),
     admin_user: str = Depends(verify_admin_credentials),
 ) -> Any:
-    """Admin channels list page."""
+    """Admin channels list page with pagination and search."""
     require_https(request)
 
-    channels = db.query(Channel).filter(Channel.is_active.is_(True)).all()
+    per_page = 10
+    offset = (page - 1) * per_page
+
+    query = db.query(Channel).filter(Channel.is_active.is_(True))
+
+    if search:
+        query = query.filter(
+            Channel.title.ilike(f"%{search}%")
+            | Channel.channel_id.ilike(f"%{search}%")
+            | Channel.source_input.ilike(f"%{search}%")
+        )
+
+    total_channels = query.count()
+    total_pages = (total_channels + per_page - 1) // per_page
+
+    channels = query.offset(offset).limit(per_page).all()
+
     csrf_token = generate_csrf_token()
     request.session["csrf_token"] = csrf_token
 
@@ -57,6 +75,14 @@ async def admin_channels(
             "channels": channels,
             "csrf_token": csrf_token,
             "admin_user": admin_user,
+            "current_page": page,
+            "total_pages": total_pages,
+            "total_channels": total_channels,
+            "search": search,
+            "has_prev": page > 1,
+            "has_next": page < total_pages,
+            "prev_page": page - 1 if page > 1 else None,
+            "next_page": page + 1 if page < total_pages else None,
         },
     )
 

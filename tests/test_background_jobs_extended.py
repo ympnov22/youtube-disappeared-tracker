@@ -137,9 +137,10 @@ class TestBackgroundJobServiceExtended:
 
         result = service._acquire_lock("UCtest123", timeout=300)
         assert result is True
-        mock_redis.set.assert_called_once_with(
-            "scan_lock:UCtest123", "1", nx=True, ex=300
-        )
+        mock_redis.set.assert_called_once()
+        call_args = mock_redis.set.call_args
+        assert call_args[0][0] == "scan_lock:UCtest123"
+        assert ":" in call_args[0][1]  # Should contain PID:timestamp format
 
     def test_acquire_lock_failure(self) -> None:
         mock_redis = Mock()
@@ -163,7 +164,7 @@ class TestBackgroundJobServiceExtended:
         service.redis_client = mock_redis
 
         service._release_lock("UCtest123")
-        mock_redis.delete.assert_called_once_with("scan_lock:UCtest123")
+        mock_redis.eval.assert_called_once()
 
     @patch("app.services.background_jobs.SessionLocal")
     def test_scan_all_channels_success(self, mock_session_local: Mock) -> None:
