@@ -21,11 +21,9 @@ kill_timeout = "5s"
 [http_service]
   internal_port = 8080
   force_https = true
-  auto_stop_machines = true
   auto_start_machines = true
-  min_machines_running = 0
-  max_machines_running = 3
-  processes = ["app"]
+  auto_stop_machines = true
+  min_machines_running = 1
 
   [http_service.concurrency]
     type = "connections"
@@ -56,7 +54,7 @@ kill_timeout = "5s"
   url_prefix = "/static/"
 
 # Restart policy for resilience
-[restart]
+[[restart]]
   policy = "on-failure"
   max_restarts = 3
 

@@ -75,6 +75,16 @@ async def health_check_detailed() -> Dict:
     }
 
 
+@app.get("/ready")
+async def readiness_check() -> Dict[str, str]:
+    """Readiness check endpoint for deployment verification."""
+    return {
+        "status": "ready",
+        "version": "0.1.0",
+        "service": "youtube-tracker",
+    }
+
+
 @app.on_event("startup")
 async def startup_event() -> None:
     """Start background services on application startup."""
