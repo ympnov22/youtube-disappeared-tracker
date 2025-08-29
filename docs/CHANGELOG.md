@@ -1,5 +1,14 @@
 # YouTube Disappeared Video Tracker - Changelog
 
+## v1.0.1
+**Date**: 2025-08-29  
+**Type**: Documentation Update
+
+### Changes
+- docs: add PR merge strategy (default Squash; exception Merge commit), and bump guideline version to v1.0.1
+
+---
+
 ## Phase 0: Project Bootstrap & Foundation
 **Status**: ✅ Complete  
 **Duration**: ~3 hours  
