@@ -108,7 +108,8 @@ class BackgroundJobService:
 
     def _acquire_lock(self, channel_id: str, timeout: int = 300) -> bool:
         """
-        Acquire a distributed lock for channel scanning with enhanced contention handling.
+        Acquire a distributed lock for channel scanning with enhanced
+        contention handling.
         """
         if not self.redis_client:
             return True

@@ -63,9 +63,7 @@ class I18n:
                 "toast.channel_added": "Channel added successfully",
                 "toast.channel_deleted": "Channel deleted successfully",
                 "toast.scan_started": "Channel scan started",
-                "toast.error_occurred": (
-                    "An error occurred. Please try again."
-                ),
+                "toast.error_occurred": ("An error occurred. Please try again."),
             },
             "ja": {
                 "nav.channels": "チャンネル",

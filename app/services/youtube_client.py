@@ -40,9 +40,7 @@ class YouTubeClient:
             os.getenv("YOUTUBE_API_BACKOFF_MULTIPLIER", "2.0")
         )
 
-    def _execute_with_retry(
-        self, request, operation_name: str = "API call"
-    ):
+    def _execute_with_retry(self, request, operation_name: str = "API call"):
         """Execute YouTube API request with exponential backoff retry."""
         last_exception = None
 
