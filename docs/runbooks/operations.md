@@ -118,25 +118,87 @@
 
 #### Rollback Procedures
 
-1. **Immediate Rollback**
+**English**: Comprehensive rollback procedures for Fly.io deployment recovery and incident response.
+
+**Japanese**: Fly.ioデプロイメントの復旧とインシデント対応のための包括的なロールバック手順。
+
+1. **Immediate Rollback (Standard)**
    ```bash
-   # List recent releases
+   # List recent releases with details
    fly releases --app youtube-tracker-prod
    
-   # Rollback to previous version
+   # Check current release status
+   fly status --app youtube-tracker-prod
+   
+   # Rollback to previous version (recommended)
    fly releases rollback --app youtube-tracker-prod
+   
+   # Verify rollback success
+   curl https://youtube-tracker-prod.fly.dev/health
+   fly logs --app youtube-tracker-prod | tail -20
    ```
 
 2. **Rollback to Specific Version**
    ```bash
-   # Rollback to specific release
+   # View release history with timestamps
+   fly releases --app youtube-tracker-prod --json | jq '.[] | {version, created_at, status}'
+   
+   # Rollback to specific release (replace v123 with actual version)
    fly releases rollback v123 --app youtube-tracker-prod
+   
+   # Monitor rollback progress
+   fly status --app youtube-tracker-prod --watch
    ```
 
-3. **Emergency Rollback**
+3. **Emergency Rollback (Force)**
    ```bash
-   # Force rollback (bypasses health checks)
+   # Force rollback (bypasses health checks) - USE WITH CAUTION
    fly releases rollback --force --app youtube-tracker-prod
+   
+   # Alternative: Deploy previous known-good commit
+   git checkout <previous-commit-hash>
+   fly deploy --app youtube-tracker-prod --strategy immediate
+   ```
+
+4. **Rollback Verification Checklist**
+   - [ ] Health endpoint responds: `curl https://youtube-tracker-prod.fly.dev/health`
+   - [ ] Admin interface accessible: `curl -u admin:pass https://youtube-tracker-prod.fly.dev/admin/channels`
+   - [ ] Database connectivity confirmed in health check
+   - [ ] Background jobs running (if SCAN_ENABLED=true)
+   - [ ] No error spikes in logs: `fly logs --app youtube-tracker-prod`
+   - [ ] Slack notifications working (if configured)
+
+5. **Post-Rollback Actions**
+   ```bash
+   # Document rollback in incident log
+   echo "$(date): Rolled back from v$(fly releases --app youtube-tracker-prod | head -2 | tail -1 | awk '{print $1}') due to [reason]" >> rollback-log.txt
+   
+   # Notify stakeholders
+   # Update incident tracking system
+   # Schedule post-incident review
+   
+   # Monitor for 30 minutes post-rollback
+   fly logs --app youtube-tracker-prod --follow
+   ```
+
+6. **Rollback Failure Recovery**
+   ```bash
+   # If rollback fails, try alternative approaches:
+   
+   # Option 1: Scale down and up to force restart
+   fly scale count 0 --app youtube-tracker-prod
+   sleep 30
+   fly scale count 1 --app youtube-tracker-prod
+   
+   # Option 2: Deploy from known-good Git commit
+   git checkout <last-known-good-commit>
+   fly deploy --app youtube-tracker-prod --strategy immediate
+   
+   # Option 3: Create new app instance (last resort)
+   fly apps create youtube-tracker-recovery --org your-org
+   fly secrets import --app youtube-tracker-recovery < secrets-backup.txt
+   fly deploy --app youtube-tracker-recovery
+   # Update DNS/load balancer to point to recovery instance
    ```
 
 ### Staging Environment

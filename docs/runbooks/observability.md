@@ -76,6 +76,37 @@ redis-cli info memory
 
 ## Alerting Configuration
 
+### Slack Notifications
+
+#### Slack Alert Configuration
+**English**: The application sends automated Slack notifications for video disappearance events when `SLACK_WEBHOOK_URL` is configured.
+
+**Japanese**: `SLACK_WEBHOOK_URL`が設定されている場合、アプリケーションは動画消失イベントに対して自動的にSlack通知を送信します。
+
+#### Slack Alert Types
+1. **Video Disappearance Events**
+   - **Trigger**: New `DisappearanceEvent` created (PRIVATE, DELETED, GEO_BLOCKED, AGE_RESTRICTED, UNKNOWN)
+   - **Format**: Rich message with channel name, video title/ID, event type, detected timestamp
+   - **Action Button**: "Check on YouTube" link to video URL
+   - **Context**: View count, duration, published date (if available)
+
+2. **Slack Alert Success Conditions**
+   - **Success**: HTTP 200 response from Slack webhook within 10 seconds
+   - **Logging**: Structured log entry with video_id, channel_id, event_type, detected_at
+   - **Retry**: No automatic retry (fire-and-forget for performance)
+
+3. **Slack Alert Failure Conditions**
+   - **Timeout**: Request timeout > 10 seconds
+   - **HTTP Error**: Non-200 response from Slack webhook
+   - **Network Error**: Connection failure or DNS resolution failure
+   - **Logging**: Warning-level logs with failure reason, no sensitive data exposure
+
+#### Slack Alert Monitoring
+- **Success Rate**: Monitor successful vs failed Slack notifications
+- **Response Time**: Track webhook response times (target < 2 seconds)
+- **Threshold**: Alert if Slack notification failure rate > 20% over 1 hour
+- **Test Notifications**: Use `/admin/test-slack` endpoint for verification
+
 ### Critical Alerts (Immediate Response Required)
 
 1. **Application Down**
@@ -93,6 +124,10 @@ redis-cli info memory
 4. **Background Jobs Stopped**
    - Condition: No successful scans for > 2 hours
    - Action: Check scheduler status and Redis connectivity
+
+5. **Slack Notification Failure**
+   - Condition: Slack notification failure rate > 50% for > 30 minutes
+   - Action: Check SLACK_WEBHOOK_URL configuration and Slack service status
 
 ### Warning Alerts (Monitor and Plan Response)
 
