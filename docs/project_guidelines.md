@@ -1,5 +1,5 @@
 # Devin Project Development Operations Guideline
-## Version: v1.0.0
+## Version: v1.0.1
 
 This document defines the operational guidelines for developing with Devin.  
 It covers development workflow, documentation updates, GitHub operations, CI/CD, and reporting methods.
@@ -53,7 +53,13 @@ It covers development workflow, documentation updates, GitHub operations, CI/CD,
 - Title + description: **English + Japanese**  
 - All CI checks must pass  
 - At least one reviewer approval required  
-- Cannot merge if `needs-jp-translation` label remains  
+- Cannot merge if `needs-jp-translation` label remains
+
+### Merge Strategy
+- **Default: Squash and merge**
+  - Rationale: keep main history simple; 1 PR = 1 commit; follow Conventional Commits for the squash message.
+- **Exception: Merge commit** only when we must preserve granular history (e.g., large feature with meaningful commit boundaries).
+- **Rebase and merge**: not used in principle.  
 
 ### Secrets
 - Do not commit API keys or passwords  
