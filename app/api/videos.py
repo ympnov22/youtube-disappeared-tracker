@@ -81,13 +81,17 @@ async def scan_channel(channel_id: str, db: Session = Depends(get_db)) -> ScanRe
 
         except HTTPException:
             raise
-        except ValueError as e:
+        except ValueError:
             raise HTTPException(
                 status_code=404,
                 detail=f"Channel {channel_id} not found on YouTube",
             )
         except Exception as e:
-            from app.services.youtube_client import YouTubeAPIError, YouTubeQuotaExhaustedError
+            from app.services.youtube_client import (
+                YouTubeAPIError,
+                YouTubeQuotaExhaustedError,
+            )
+
             if isinstance(e, (YouTubeAPIError, YouTubeQuotaExhaustedError)):
                 raise HTTPException(
                     status_code=404,
