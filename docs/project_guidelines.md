@@ -85,7 +85,7 @@ It covers development workflow, documentation updates, GitHub operations, CI/CD,
 
 ### Workflows
 - **CI (`ci.yml`)**: lint, type-check, test, security  
-- **Staging deploy (`deploy-staging.yml`)**: auto-deploy on `main` push (Fly.io)  
+- **Staging deploy (`deploy-staging.yml`)**: auto-deploy on `main` push (Render primary, Fly.io dormant)  
 - **Production deploy (`deploy-prod.yml`)**: manual approval (workflow_dispatch)  
 
 ### CI Content

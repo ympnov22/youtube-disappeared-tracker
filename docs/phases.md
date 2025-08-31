@@ -349,7 +349,7 @@ This project will be developed in incremental phases, each building upon the pre
 **Branch**: `devin/{timestamp}-phase7-deployment`
 
 ### Objectives
-- Deploy application to Fly.io
+- Deploy application to Render (primary), maintain Fly.io configuration (dormant)
 - Set up production environment configuration
 - Implement monitoring and logging
 - Create deployment documentation
