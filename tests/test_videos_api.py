@@ -244,3 +244,49 @@ class TestVideosAPI:
         response = client.get("/api/events?since=invalid-date")
         assert response.status_code == 400
         assert "Invalid 'since' datetime format" in response.json()["detail"]
+
+    @patch("app.api.videos.YouTubeClient")
+    @patch("app.api.videos.VideoIngestionService")
+    def test_scan_channel_backward_compatibility(
+        self, mock_ingestion_service_class: Mock, mock_youtube_client_class: Mock
+    ) -> None:
+        mock_service = Mock()
+        mock_ingestion_service_class.return_value = mock_service
+        mock_service.scan_channel.return_value = (3, 1, 0)
+
+        response = client.post("/scan/UCtest123")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["added"] == 3
+        assert data["updated"] == 1
+        assert data["channel_id"] == "UCtest123"
+
+    @patch("app.api.videos.YouTubeClient")
+    def test_scan_channel_auto_registration(self, mock_youtube_client_class: Mock) -> None:
+        mock_client = Mock()
+        mock_youtube_client_class.return_value = mock_client
+        mock_client.resolve_channel_input.return_value = (
+            "UCnewchannel",
+            {
+                "title": "New Test Channel",
+                "description": "Auto-registered channel",
+                "uploads_playlist_id": "UUnewchannel",
+            }
+        )
+        
+        with patch("app.api.videos.VideoIngestionService") as mock_ingestion_service_class:
+            mock_service = Mock()
+            mock_ingestion_service_class.return_value = mock_service
+            mock_service.scan_channel.return_value = (5, 0, 0)
+            
+            response = client.post("/api/scan/UCnewchannel")
+            assert response.status_code == 200
+            data = response.json()
+            assert data["message"] == "Successfully scanned channel New Test Channel"
+
+    def test_api_events_endpoint(self) -> None:
+        response = client.get("/api/events")
+        assert response.status_code == 200
+        data = response.json()
+        assert "events" in data
+        assert "total" in data

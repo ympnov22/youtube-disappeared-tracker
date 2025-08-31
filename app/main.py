@@ -52,6 +52,7 @@ app.mount("/static", StaticFiles(directory="app/web/static"), name="static")
 
 app.include_router(channels_router, prefix="/api")
 app.include_router(videos_router, prefix="/api")
+app.include_router(videos_router)
 
 app.include_router(web_router)
 
