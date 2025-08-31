@@ -18,9 +18,11 @@ from app.services.video_ingestion import VideoIngestionService
 from app.services.youtube_client import YouTubeClient
 
 router = APIRouter(tags=["videos"])
+backward_compat_router = APIRouter(tags=["videos-legacy"])
 
 
 @router.post("/scan/{channel_id}", response_model=ScanResponse)
+@backward_compat_router.post("/scan/{channel_id}", response_model=ScanResponse)
 async def scan_channel(channel_id: str, db: Session = Depends(get_db)) -> ScanResponse:
     """
     Manually trigger a scan for a specific channel.
@@ -38,10 +40,69 @@ async def scan_channel(channel_id: str, db: Session = Depends(get_db)) -> ScanRe
     )
 
     if not channel:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Channel {channel_id} not found or inactive",
-        )
+        try:
+            youtube_client = YouTubeClient()
+            resolved_channel_id, metadata = youtube_client.resolve_channel_input(
+                channel_id
+            )
+
+            if not resolved_channel_id or not metadata:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Channel {channel_id} not found on YouTube",
+                )
+
+            from sqlalchemy import func
+
+            channel_count = (
+                db.query(func.count(Channel.id))
+                .filter(Channel.is_active.is_(True))
+                .scalar()
+            )
+            if channel_count >= 10:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        "Maximum of 10 channels allowed. "
+                        "Please remove a channel before scanning a new one."
+                    ),
+                )
+
+            channel = Channel(
+                channel_id=resolved_channel_id,
+                title=metadata["title"],
+                description=metadata.get("description"),
+                thumbnail_url=metadata.get("thumbnail_url"),
+                subscriber_count=metadata.get("subscriber_count"),
+                uploads_playlist_id=metadata.get("uploads_playlist_id"),
+                source_input=channel_id,
+            )
+            db.add(channel)
+            db.commit()
+            db.refresh(channel)
+
+        except HTTPException:
+            raise
+        except ValueError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Channel {channel_id} not found on YouTube",
+            )
+        except Exception as e:
+            from app.services.youtube_client import (
+                YouTubeAPIError,
+                YouTubeQuotaExhaustedError,
+            )
+
+            if isinstance(e, (YouTubeAPIError, YouTubeQuotaExhaustedError)):
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Channel {channel_id} not found on YouTube",
+                )
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to register channel {channel_id}: {str(e)}",
+            )
 
     try:
         youtube_client = YouTubeClient()

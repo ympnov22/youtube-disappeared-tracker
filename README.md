@@ -114,6 +114,22 @@ After deployment, the application provides a public web interface at the root UR
 - **イベント監視**: チャンネル、イベントタイプ、日付でフィルタリングして消失イベントを閲覧
 - **API文書**: `/docs` でインタラクティブなAPI文書にアクセス
 
+### API Endpoints
+
+The application provides REST API endpoints with `/api` prefix as the canonical form:
+
+**Canonical API Routes (recommended):**
+- `POST /api/scan/{channel_id}` - Trigger manual channel scan (auto-registers if needed)
+- `GET /api/channels/{id}/videos` - List videos for a channel
+- `GET /api/events` - List disappearance events
+- `POST /api/channels/` - Register a new channel
+- `GET /api/channels/` - List registered channels
+
+**Backward Compatibility Routes:**
+- `POST /scan/{channel_id}` - Legacy scan endpoint (same functionality)
+
+**Note:** The `/api` prefix is the canonical form going forward. Legacy routes without `/api` are maintained for backward compatibility but may be deprecated in future versions.
+
 ### Health Check Endpoints
 
 The application provides health check endpoints for monitoring:
