@@ -96,6 +96,24 @@ poetry run mypy app
    - `REDIS_URL`: Redis connection URL (provided by Render)
    - `ENV`: Set to `production`
 
+### Using the Web UI
+
+After deployment, the application provides a public web interface at the root URL:
+
+**English**:
+- **Home Page**: Access the main interface at `/` to interact with the tracker
+- **Channel Scanning**: Enter a YouTube channel ID (UCxxxxx format) to trigger manual scans
+- **Video Listing**: View all videos for a specific channel with status filtering (active/missing)
+- **Event Monitoring**: Browse disappearance events with filtering by channel, event type, and date
+- **API Documentation**: Access interactive API docs at `/docs`
+
+**Japanese**:
+- **ホームページ**: `/` でメインインターフェースにアクセスしてトラッカーを操作
+- **チャンネルスキャン**: YouTubeチャンネルID（UCxxxxx形式）を入力して手動スキャンを実行
+- **動画一覧**: 特定チャンネルの全動画をステータスフィルタ（アクティブ/消失）で表示
+- **イベント監視**: チャンネル、イベントタイプ、日付でフィルタリングして消失イベントを閲覧
+- **API文書**: `/docs` でインタラクティブなAPI文書にアクセス
+
 ### Health Check Endpoints
 
 The application provides health check endpoints for monitoring:
@@ -113,9 +131,9 @@ The application provides health check endpoints for monitoring:
 
 ### Render Configuration
 
-The application is configured via `render.yaml` with:
+The application is configured for Render deployment with:
 - **Service Type**: Web service
-- **Plan**: Free tier
+- **Plan**: Free tier compatible
 - **Health Check**: `/health` endpoint
 - **Auto Deploy**: Enabled for main branch
 - **Port**: Automatically configured via `$PORT` environment variable

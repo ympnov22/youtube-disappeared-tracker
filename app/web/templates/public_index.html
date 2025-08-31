@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Disappeared Video Tracker</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .public-header {
+            background: var(--card-background);
+            border-bottom: 1px solid var(--border-color);
+            box-shadow: var(--shadow);
+            padding: 1rem 0;
+        }
+        .public-nav {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+        }
+        .public-nav a {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .api-section {
+            background: var(--card-background);
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+            margin-bottom: 2rem;
+        }
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .loading-overlay.show {
+            display: flex;
+        }
+    </style>
+</head>
+<body>
+    <header class="public-header">
+        <div class="container">
+            <h1><a href="/">YouTube Disappeared Video Tracker</a></h1>
+            <nav class="public-nav">
+                <a href="#channels">Channels</a>
+                <a href="#events">Events</a>
+                <a href="/docs">API Docs</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="main">
+        <div class="container">
+            <div class="page-header">
+                <h2>YouTube Video Tracker</h2>
+                <p>Monitor YouTube channels and track video availability changes</p>
+            </div>
+
+            <!-- Channel Scan Section -->
+            <div class="api-section" id="channels">
+                <h3>Trigger Channel Scan / チャンネルスキャンを実行</h3>
+                <div class="form-group">
+                    <label for="channel-id">Channel ID (UCxxxxx format):</label>
+                    <input type="text" id="channel-id" placeholder="UCxxxxxxxxxxxxxxxxxxxxx" />
+                </div>
+                <button class="btn btn-primary" onclick="triggerScan()">
+                    <span class="btn-text">Scan Channel / スキャン実行</span>
+                    <span class="btn-loading" style="display: none;">
+                        <span class="spinner"></span> Scanning...
+                    </span>
+                </button>
+                <div id="scan-result" class="result-area"></div>
+            </div>
+
+            <!-- Channel Videos Section -->
+            <div class="api-section">
+                <h3>Channel Videos / チャンネル動画一覧</h3>
+                <div class="form-group">
+                    <label for="videos-channel-id">Channel ID:</label>
+                    <input type="text" id="videos-channel-id" placeholder="UCxxxxxxxxxxxxxxxxxxxxx" />
+                </div>
+                <div class="form-group">
+                    <label for="video-status">Status Filter:</label>
+                    <select id="video-status">
+                        <option value="">All Videos</option>
+                        <option value="active">Active Videos</option>
+                        <option value="missing">Missing Videos</option>
+                    </select>
+                </div>
+                <button class="btn btn-secondary" onclick="loadChannelVideos()">
+                    Load Videos / 動画を読み込み
+                </button>
+                <div id="videos-result" class="result-area"></div>
+            </div>
+
+            <!-- Events Section -->
+            <div class="api-section" id="events">
+                <h3>Disappearance Events / 消失イベント</h3>
+                <div class="filters-form">
+                    <div class="filter-group">
+                        <label for="events-channel-id">Channel ID (optional):</label>
+                        <input type="text" id="events-channel-id" placeholder="UCxxxxxxxxxxxxxxxxxxxxx" />
+                    </div>
+                    <div class="filter-group">
+                        <label for="event-type">Event Type:</label>
+                        <select id="event-type">
+                            <option value="">All Types</option>
+                            <option value="PRIVATE">Private</option>
+                            <option value="DELETED">Deleted</option>
+                            <option value="GEO_BLOCKED">Geo Blocked</option>
+                            <option value="AGE_RESTRICTED">Age Restricted</option>
+                            <option value="UNKNOWN">Unknown</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="events-limit">Limit:</label>
+                        <select id="events-limit">
+                            <option value="10">10</option>
+                            <option value="25" selected>25</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
+                    </div>
+                </div>
+                <button class="btn btn-secondary" onclick="loadEvents()">
+                    Load Events / イベントを読み込み
+                </button>
+                <div id="events-result" class="result-area"></div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2025 YouTube Disappeared Video Tracker</p>
+        </div>
+    </footer>
+
+    <div class="loading-overlay" id="loading-overlay">
+        <div class="spinner" style="width: 40px; height: 40px;"></div>
+    </div>
+
+    <script src="/static/js/public_app.js"></script>
+</body>
+</html>
