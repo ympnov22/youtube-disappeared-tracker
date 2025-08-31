@@ -1,9 +1,10 @@
 import os
-from typing import Dict
+from typing import Any, Dict
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
@@ -19,6 +20,8 @@ app = FastAPI(
     description="Track YouTube channel uploads and detect disappeared videos",
     version="0.1.0",
 )
+
+templates = Jinja2Templates(directory="app/web/templates")
 
 limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
@@ -50,8 +53,8 @@ app.include_router(web_router)
 
 
 @app.get("/")
-async def root() -> Dict[str, str]:
-    return {"message": "YouTube Disappeared Video Tracker API"}
+async def root(request: Request) -> Any:
+    return templates.TemplateResponse("public_index.html", {"request": request})
 
 
 @app.get("/health")

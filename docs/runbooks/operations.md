@@ -841,6 +841,99 @@ flyctl status --app youtube-tracker
 
 3. **Scale Down**: After issue resolution
 
+### Render Deployment
+
+#### Initial Render Deployment
+
+**English**: Comprehensive deployment procedures for Render platform with environment configuration and verification steps.
+
+**Japanese**: 環境設定と検証手順を含むRenderプラットフォームの包括的なデプロイメント手順。
+
+1. **Prepare Application**
+   ```bash
+   # Clone repository
+   git clone https://github.com/ympnov22/youtube-disappeared-tracker.git
+   cd youtube-disappeared-tracker
+   
+   # Install dependencies and run tests
+   poetry install
+   poetry run pytest --cov=app --cov-report=term-missing
+   ```
+
+2. **Create Render Service**
+   - Go to [Render Dashboard](https://dashboard.render.com)
+   - Click "New +" → "Web Service"
+   - Connect GitHub repository: `ympnov22/youtube-disappeared-tracker`
+   - Configure service settings:
+     - **Name**: `youtube-tracker-prod`
+     - **Region**: Choose closest to users
+     - **Branch**: `main`
+     - **Build Command**: `poetry install`
+     - **Start Command**: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+
+3. **Set Environment Variables**
+   In Render dashboard, add environment variables:
+   ```
+   YOUTUBE_API_KEY=your-youtube-api-key
+   SLACK_WEBHOOK_URL=https://hooks.slack.com/services/... (optional)
+   ENV=production
+   REDIS_URL=redis://... (will be auto-provided if Redis add-on used)
+   APP_SECRET_KEY=your-secure-secret-key
+   SESSION_SECRET=your-session-secret
+   SCAN_ENABLED=true
+   SCAN_INTERVAL_MINUTES=60
+   ```
+
+4. **Add Redis Add-on** (if needed)
+   - In service dashboard, go to "Environment" tab
+   - Click "Add Add-on" → "Redis"
+   - Select plan (free tier available)
+   - `REDIS_URL` will be automatically added
+
+5. **Deploy and Verify**
+   ```bash
+   # Check deployment status in Render dashboard
+   # Verify health endpoint
+   curl https://youtube-tracker-prod.onrender.com/health
+   
+   # Test public UI
+   curl https://youtube-tracker-prod.onrender.com/
+   ```
+
+#### Render Update Deployment
+
+1. **Automatic Deployment**
+   - Push changes to `main` branch
+   - Render automatically detects and deploys changes
+   - Monitor deployment in Render dashboard
+
+2. **Manual Deployment**
+   - In Render dashboard, go to service
+   - Click "Manual Deploy" → "Deploy latest commit"
+
+#### Render Rollback Procedures
+
+1. **Rollback via Dashboard**
+   - Go to service in Render dashboard
+   - Click "Deploys" tab
+   - Find previous successful deployment
+   - Click "Redeploy" on the desired version
+
+2. **Rollback via Git**
+   ```bash
+   # Revert to previous commit
+   git revert <commit-hash>
+   git push origin main
+   # Render will automatically deploy the reverted version
+   ```
+
+#### Render Monitoring
+
+- **Logs**: View in Render dashboard under "Logs" tab
+- **Metrics**: Monitor CPU, memory, and response times in dashboard
+- **Health Checks**: Render automatically monitors `/health` endpoint
+- **Alerts**: Configure email notifications for deployment failures
+
 ---
 
 **Last Updated**: August 29, 2025
