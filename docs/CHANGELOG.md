@@ -34,7 +34,7 @@
 1. **Technology Stack**: FastAPI + Python 3.12, PostgreSQL, Redis, React frontend
 2. **Development Approach**: 8-phase incremental development with user approval gates
 3. **Documentation Strategy**: English docs with bilingual PR/reports (English + Japanese)
-4. **Deployment Target**: Fly.io (Tokyo region) for production
+4. **Deployment Target**: Render (primary), Fly.io (dormant) for production
 5. **API Strategy**: YouTube Data API v3 with API key for public data access
 6. **Data Storage**: Metadata only, no video downloads
 7. **Architecture**: Microservices-ready structure with clear separation of concerns
@@ -275,7 +275,7 @@
 ### Files Created/Modified
 - **Web UI**: `app/web/` directory with routes, auth, templates, static assets
 - **Services**: `app/services/slack_notifier.py` for Slack integration
-- **Deployment**: `fly.toml` for Fly.io configuration
+- **Deployment**: `fly.toml` for Fly.io configuration (dormant), `render.yaml` for Render (primary)
 - **Tests**: Comprehensive test coverage for new functionality
 - **Dependencies**: Updated `pyproject.toml` and `poetry.lock`
 

@@ -12,7 +12,7 @@ The YouTube Disappeared Video Tracker is a personal practice project designed to
 - **Detection**: Periodic diffing to identify NEW/CHANGED/MISSING videos
 - **Interface**: Simple web dashboard with channel timeline view and CSV export
 - **Notifications**: Optional Slack/email alerts for daily missing video summaries
-- **Deployment**: Fly.io platform (Tokyo region)
+- **Deployment**: Render (primary), Fly.io (dormant)
 
 ## 2. Functional Requirements
 
@@ -190,7 +190,8 @@ ChangeLog:
 ### 5.2 Deployment
 
 #### 5.2.1 Platform
-- **Primary**: Fly.io (Tokyo region)
+- **Primary**: Render (active auto-deploy)
+- **Secondary**: Fly.io (dormant, configuration maintained)
 - **Configuration**: Environment variables for secrets
 - **Scaling**: Single instance initially, horizontal scaling capability
 

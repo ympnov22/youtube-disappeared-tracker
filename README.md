@@ -118,7 +118,7 @@ After deployment, the application provides a public web interface at the root UR
 
 The application provides health check endpoints for monitoring:
 - `/health`: Basic health status
-- `/ready`: Readiness check (may return 404 if not implemented)
+- `/ready`: Readiness check including database connectivity
 
 ### Environment Variables
 
@@ -127,6 +127,9 @@ The application provides health check endpoints for monitoring:
 | `YOUTUBE_API_KEY` | Yes | YouTube Data API v3 access key |
 | `SLACK_WEBHOOK_URL` | No | Slack webhook for notifications |
 | `REDIS_URL` | Yes | Redis connection URL (auto-provided by Render) |
+| `DATABASE_URL` | Yes | PostgreSQL connection URL (auto-provided by Render) |
+| `APP_SECRET_KEY` | Yes | Secret key for application security |
+| `SESSION_SECRET` | Yes | Secret key for session management |
 | `ENV` | Yes | Set to `production` for production deployment |
 
 ### Render Configuration
@@ -137,6 +140,18 @@ The application is configured for Render deployment with:
 - **Health Check**: `/health` endpoint
 - **Auto Deploy**: Enabled for main branch
 - **Port**: Automatically configured via `$PORT` environment variable
+
+### Deployment Platform Status
+
+**Primary Platform**: Render (active auto-deploy)
+- Auto-deploy enabled for `main` branch
+- Health checks configured
+- Environment variables managed via Render dashboard
+
+**Secondary Platform**: Fly.io (dormant)
+- Configuration maintained in `fly.toml` for future use
+- Deployment workflows disabled by default in CI
+- To re-enable: Remove `if: false` from `.github/workflows/release.yml` and restore `FLY_API_TOKEN` secret
 
 This project follows a phased development approach with clear milestones and documentation requirements.
 
