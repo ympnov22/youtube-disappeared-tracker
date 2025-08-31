@@ -18,9 +18,11 @@ from app.services.video_ingestion import VideoIngestionService
 from app.services.youtube_client import YouTubeClient
 
 router = APIRouter(tags=["videos"])
+backward_compat_router = APIRouter(tags=["videos-legacy"])
 
 
 @router.post("/scan/{channel_id}", response_model=ScanResponse)
+@backward_compat_router.post("/scan/{channel_id}", response_model=ScanResponse)
 async def scan_channel(channel_id: str, db: Session = Depends(get_db)) -> ScanResponse:
     """
     Manually trigger a scan for a specific channel.

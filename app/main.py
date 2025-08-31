@@ -13,6 +13,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.api.channels import router as channels_router
+from app.api.videos import backward_compat_router
 from app.api.videos import router as videos_router
 from app.core.database import Base, SessionLocal, engine
 from app.models import Channel, DisappearanceEvent, Video  # noqa: F401
@@ -52,7 +53,7 @@ app.mount("/static", StaticFiles(directory="app/web/static"), name="static")
 
 app.include_router(channels_router, prefix="/api")
 app.include_router(videos_router, prefix="/api")
-app.include_router(videos_router)
+app.include_router(backward_compat_router)
 app.include_router(web_router)
 
 
