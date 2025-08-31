@@ -25,3 +25,16 @@ def test_health_check() -> None:
     assert data["status"] == "healthy"
     assert data["version"] == "0.1.0"
     assert data["service"] == "youtube-tracker"
+
+
+def test_ready_check() -> None:
+    response = client.get("/ready")
+    assert response.status_code in [200, 503]
+    data = response.json()
+    if response.status_code == 200:
+        assert data["status"] == "ready"
+        assert data["service"] == "youtube-tracker"
+    else:
+        assert "detail" in data
+        assert "status" in data["detail"]
+        assert "error" in data["detail"]
