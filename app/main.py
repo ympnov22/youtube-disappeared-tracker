@@ -1,17 +1,21 @@
 import os
 from typing import Any, Dict
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
+from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.api.channels import router as channels_router
 from app.api.videos import router as videos_router
+from app.core.database import Base, SessionLocal, engine
+from app.models import Channel, DisappearanceEvent, Video  # noqa: F401
 from app.services.background_jobs import background_job_service
 from app.web.routes import router as web_router
 
@@ -66,6 +70,28 @@ async def health_check() -> Dict[str, str]:
     }
 
 
+@app.get("/ready")
+async def readiness_check() -> Dict[str, str]:
+    """Readiness check including database connectivity."""
+    try:
+        with SessionLocal() as db:
+            db.execute(text("SELECT 1"))
+        return {
+            "status": "ready",
+            "version": "0.1.0",
+            "service": "youtube-tracker",
+        }
+    except SQLAlchemyError as e:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "status": "not ready",
+                "error": "Database connection failed",
+                "message": str(e),
+            },
+        )
+
+
 @app.get("/healthz")
 async def health_check_detailed() -> Dict:
     """Detailed health check including scheduler status."""
@@ -80,7 +106,8 @@ async def health_check_detailed() -> Dict:
 
 @app.on_event("startup")
 async def startup_event() -> None:
-    """Start background services on application startup."""
+    """Initialize database schema and start background services."""
+    Base.metadata.create_all(bind=engine)
     background_job_service.start()
 
 
