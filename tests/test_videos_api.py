@@ -262,7 +262,9 @@ class TestVideosAPI:
         assert data["channel_id"] == "UCtest123"
 
     @patch("app.api.videos.YouTubeClient")
-    def test_scan_channel_auto_registration(self, mock_youtube_client_class: Mock) -> None:
+    def test_scan_channel_auto_registration(
+        self, mock_youtube_client_class: Mock
+    ) -> None:
         mock_client = Mock()
         mock_youtube_client_class.return_value = mock_client
         mock_client.resolve_channel_input.return_value = (
@@ -271,14 +273,16 @@ class TestVideosAPI:
                 "title": "New Test Channel",
                 "description": "Auto-registered channel",
                 "uploads_playlist_id": "UUnewchannel",
-            }
+            },
         )
-        
-        with patch("app.api.videos.VideoIngestionService") as mock_ingestion_service_class:
+
+        with patch(
+            "app.api.videos.VideoIngestionService"
+        ) as mock_ingestion_service_class:
             mock_service = Mock()
             mock_ingestion_service_class.return_value = mock_service
             mock_service.scan_channel.return_value = (5, 0, 0)
-            
+
             response = client.post("/api/scan/UCnewchannel")
             assert response.status_code == 200
             data = response.json()
