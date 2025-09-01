@@ -130,6 +130,9 @@ async def scan_channel(channel_id: str, db: Session = Depends(get_db)) -> ScanRe
 
 
 @router.get("/channels/{channel_id}/videos", response_model=VideoListResponse)
+@backward_compat_router.get(
+    "/channels/{channel_id}/videos", response_model=VideoListResponse
+)
 async def get_channel_videos(
     channel_id: str,
     db: Session = Depends(get_db),
@@ -181,6 +184,7 @@ async def get_channel_videos(
 
 
 @router.get("/events", response_model=DisappearanceEventListResponse)
+@backward_compat_router.get("/events", response_model=DisappearanceEventListResponse)
 async def get_disappearance_events(
     db: Session = Depends(get_db),
     limit: int = Query(default=50, ge=1, le=100),
