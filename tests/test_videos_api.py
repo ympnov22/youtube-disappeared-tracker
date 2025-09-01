@@ -294,3 +294,31 @@ class TestVideosAPI:
         data = response.json()
         assert "events" in data
         assert "total" in data
+
+    def test_get_channel_videos_backward_compatibility(self) -> None:
+        db = TestingSessionLocal()
+        video = Video(
+            video_id="test_video",
+            channel_id="UCtest123",
+            title="Test Video",
+            published_at=datetime(2023, 1, 1, tzinfo=timezone.utc),
+            is_available=True,
+        )
+        db.add(video)
+        db.commit()
+        db.close()
+
+        api_response = client.get("/api/channels/UCtest123/videos")
+        legacy_response = client.get("/channels/UCtest123/videos")
+
+        assert api_response.status_code == 200
+        assert legacy_response.status_code == 200
+        assert api_response.json() == legacy_response.json()
+
+    def test_get_events_backward_compatibility(self) -> None:
+        api_response = client.get("/api/events")
+        legacy_response = client.get("/events")
+
+        assert api_response.status_code == 200
+        assert legacy_response.status_code == 200
+        assert api_response.json() == legacy_response.json()

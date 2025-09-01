@@ -126,9 +126,12 @@ The application provides REST API endpoints with `/api` prefix as the canonical 
 - `GET /api/channels/` - List registered channels
 
 **Backward Compatibility Routes:**
-- `POST /scan/{channel_id}` - Legacy scan endpoint (same functionality)
+For backward compatibility, the following legacy routes are also supported:
+- `POST /scan/{channel_id}` - Equivalent to `/api/scan/{channel_id}`
+- `GET /channels/{id}/videos` - Equivalent to `/api/channels/{id}/videos`
+- `GET /events` - Equivalent to `/api/events`
 
-**Note:** The `/api` prefix is the canonical form going forward. Legacy routes without `/api` are maintained for backward compatibility but may be deprecated in future versions.
+**Note:** New integrations should use the canonical `/api/*` routes. Legacy routes are maintained for existing integrations but may be deprecated in future versions.
 
 ### Health Check Endpoints
 
